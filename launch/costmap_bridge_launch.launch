@@ -1,0 +1,6 @@
+<launch>
+  <depend package="my_custom_msg_package" />
+  <group ns="costmap_bridge">
+    <node pkg="costmap_bridge" name="costmap_bridge" type="costmap_bridge" output="screen"/>
+  </group>
+</launch>
