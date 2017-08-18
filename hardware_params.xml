@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <opencv_storage>
-<cells_width>1000</cells_width>
-<cells_height>1000</cells_height>
+<cells_width>750</cells_width>
+<cells_height>500</cells_height>
 <nw_longitude>-123.251004</nw_longitude>
 <nw_latitude>44.539847</nw_latitude>
 <se_longitude>-123.247446</se_longitude>

@@ -99,7 +99,7 @@ bool Costmap_Utils::initialize_costmap(){
 		
 
 	// initialize cells
-	cv::Mat a = cv::Mat::ones( this->map_size_cells.x, this->map_size_cells.y, CV_16S)*this->infFree;
+	cv::Mat a = cv::Mat::ones( this->map_size_cells.y, this->map_size_cells.x, CV_16S)*this->infFree;
 	this->cells = a.clone();
 	ROS_INFO("cells size: %i, %i", this->cells.cols, this->cells.rows);
 	
@@ -407,92 +407,6 @@ bool Costmap_Utils::a_star_path(const cv::Point &sLoc, const cv::Point &gLoc, st
 		}
 	}
 	return false;
-}
-
-bool Costmap_Utils::a_star_distance(const cv::Point &sLoc, const cv::Point &gLoc, double &length){
-
-	if(this->need_initialization){
-		return false;
-	}
-
-	length = 0.0;
-	if(sLoc == gLoc){
-		return true;
-	}
-
-	cv::Mat cSet = cv::Mat::zeros(cells.size(), CV_16SC1); // 1 means in closed set, 0 means not
-	cv::Mat oSet = cv::Mat::zeros(cells.size(), CV_16SC1); // 1 means in open set, 0 means not
-
-	cv::Mat gScore = cv::Mat::ones(cells.size(), CV_32FC1)*INFINITY; // known cost from initial node to n
-	cv::Mat fScore = cv::Mat::ones(cells.size(), CV_32FC1)*INFINITY; // known cost from initial node to n
-
-	std::vector<cv::Point> oVec;
-	oVec.push_back(sLoc);
-	oSet.at<short>(sLoc) = 1; // starting node has score 0
-	gScore.at<float>(sLoc)  = 0; // starting node in open set
-	fScore.at<float>(sLoc) = this->a_star_heuristic * this->get_cells_euclidian_distance(sLoc, gLoc);
-	fScore.at<float>(gLoc) = 1;
-
-	// for nbrs
-	int nx[8] = {-1,-1,-1,0, 0,1,1, 1};
-	int ny[8] = { 1, 0,-1,1,-1,1,0,-1};
-	double neighbor_distance[8] = {1.414214, 1, 1.414214, 1, 1, 1.414214, 1, 1.414214};
-
-	while(oVec.size() > 0){
-		/////////////////// this finds node with lowest fScore and makes current
-		double min = INFINITY;
-		int mindex = -1;
-
-		for(size_t i=0; i<oVec.size(); i++){
-			if(fScore.at<float>(oVec[i]) < min){
-				min = fScore.at<float>(oVec[i]);
-				mindex = i;
-			}
-		}
-
-		if(mindex < 0){
-			return false;
-		}
-
-		cv::Point cLoc = oVec[mindex];
-		oVec.erase(oVec.begin() + mindex);
-		oSet.at<short>(cLoc) = 0;
-		cSet.at<short>(cLoc) = 1;
-
-		/////////////////////// end finding current node
-		if(pointCompare(cLoc, gLoc)){ // if the current node equals goal, construct path
-			//cerr << "Costmap_Utils::a_star_distance::out clean" << endl;
-			length = gScore.at<float>(cLoc);
-			return true;
-		} ///////////////////////////////// end construct path
-
-		for(int ni = 0; ni<8; ni++){
-			cv::Point nbr(cLoc.x + nx[ni], cLoc.y + ny[ni]);
-			if(pointOnMat(nbr, cells) ){
-				if(cSet.at<short>(nbr) == 1){ // has it already been eval? in cSet
-					continue;
-				}
-				double occ_pen = this->get_occ_penalty(nbr);
-				double ngScore = gScore.at<float>(cLoc) + (1 + occ_pen) * neighbor_distance[ni]; 
-				if(oSet.at<short>(nbr) == 0){
-					oSet.at<short>(nbr) = 1;  // add nbr to open set
-					oVec.push_back(nbr);
-				}
-				else if(ngScore >= gScore.at<float>(nbr) ){ // is temp gscore worse than stored g score of nbr
-					continue;
-				}
-
-				gScore.at<float>(nbr) = ngScore;
-				if(cells.at<short>(nbr) < obsOccupied){
-					fScore.at<float>(nbr) = gScore.at<float>(nbr) + this->a_star_heuristic * this->get_cells_euclidian_distance(gLoc,nbr);
-				}
-				else{
-					fScore.at<float>(nbr)= INFINITY;
-				}
-			}
-		}
-	}
-	return INFINITY;
 }
 
 double Costmap_Utils::get_occ_penalty(const cv::Point &p){

@@ -22,7 +22,7 @@ Costmap::Costmap(ros::NodeHandle nHandle){//, std::string param_file){
 	this->cell_goal = Point(50,50);
 	// initialize local locs
 	this->local_loc = Point2d(-1.0, -1.0);
-	this->local_goal = Point2d(-1.0, -1.0);
+	this->local_goal = Point2d(50.0, 50.0);
 	this->published_local_goal = Point2d(-1, -1);
 	// set initial flags false
 	this->locationInitialized = false;
@@ -35,7 +35,7 @@ Costmap::Costmap(ros::NodeHandle nHandle){//, std::string param_file){
 	this->status_time = ros::Time::now(); // when did I last publish a status report
 	this->status_interval = ros::Duration(1.0);
 	this->act_time = ros::Time::now();
-	this->act_interval = ros::Duration(3.0); // how often should I replan if I don't get an update or request
+	this->act_interval = ros::Duration(5.0); // how often should I replan if I don't get an update or request
 	this->plot_time = ros::Time::now(); // when did I last display the plot
 	this->plot_interval = ros::Duration(1.0); // plot at 1 Hz
 
@@ -55,7 +55,7 @@ Costmap::Costmap(ros::NodeHandle nHandle){//, std::string param_file){
 	// tell the DJI Bridge where I am going
 	this->path_publisher =  nHandle.advertise<custom_messages::DJI_Bridge_Travel_Path_MSG>("/travel_path", 10);
 	// tell everyone my status
-	this->status_publisher = nHandle.advertise<custom_messages::Costmap_Bridge_Status_MSG>("/costmap_brdige_status", 10);
+	this->status_publisher = nHandle.advertise<custom_messages::Costmap_Bridge_Status_MSG>("/costmap_bridge_status", 10);
 	// publish marker to RVIZ
 	this->marker_publisher = nHandle.advertise<visualization_msgs::Marker>("/RVIZ", 10);
 }
@@ -95,6 +95,12 @@ void Costmap::publish_map_updates(const std::vector<cv::Point> &u_pts, const std
 }
 
 void Costmap::costmap_update_callback( const custom_messages::Costmap_Bridge_Team_Map_Update_MSG &update){
+	if( !this->costmapInitialized ){ // have i initialized the costmap?
+		ROS_ERROR("Costmap_Bridge::Costmap::costmap_callback::costmap not initialized");
+		return;
+	}
+
+
 	std::vector<int> xs = update.xs;
 	std::vector<int> ys = update.ys;
 	std::vector<int> tps = update.tps;
@@ -105,7 +111,16 @@ void Costmap::costmap_update_callback( const custom_messages::Costmap_Bridge_Tea
 void Costmap::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){	
 	locationInitialized = true;
 	this->local_loc = Point2d(status_in.local_x, status_in.local_y);
-	this->utils.local_to_cells(this->local_loc, this->cell_loc);
+	cv:;Point t;	
+	this->utils.local_to_cells(this->local_loc, t);
+
+	if(this->utils.point_in_cells(t)){
+		this->cell_loc = t;
+	}
+	else{
+		ROS_ERROR("Costmap_Bridge::Costmap::DJI_Bridge_Status::off map");
+		return;	
+	}
 
 	if(ros::Time::now() - this->plot_time > this->plot_interval){
 		this->plot_time = ros::Time::now();
@@ -129,10 +144,15 @@ void Costmap::dist_planner_goal_callback( const custom_messages::DJI_Bridge_Trav
 	this->wp_path.clear();
 	this->cells_path.clear();
 
-	for(size_t i=0; i<path_in.latitudes.size(); i++){
-		Point2d l_wp(path_in.longitudes[i], path_in.latitudes[i]);
+	for(size_t i=0; i<path_in.local_xs.size(); i++){
+		Point2d l_wp(path_in.local_xs[i], path_in.local_ys[i]);
 		Point c_wp;
 		this->utils.local_to_cells(l_wp, c_wp);
+
+		if(!this->utils.point_in_cells(c_wp)){
+			ROS_ERROR("Costmap_Bridge::Dist_Planner_Callback::Wp off map");
+			return;
+		}
 
 		this->wp_path.push_back(l_wp);
 		this->cells_path.push_back(c_wp);
@@ -147,26 +167,22 @@ void Costmap::publish_travel_path(const std::vector<Point2d> &path){
 	// initialize msg
 	custom_messages::DJI_Bridge_Travel_Path_MSG path_msg;
 	cv::Point2d local, next_local;
-	// set current point in local
-	this->utils.cells_to_local(cells_path[0], local);
 	// for length of path
-	for(size_t i=0; i<this->cells_path.size(); i++){
+	for(size_t i=0; i<path.size(); i++){
 		// go from cells to loc_x, loc_y
 		// set path
-		path_msg.longitudes.push_back(double(local.x));
-		path_msg.latitudes.push_back(double(local.y));
+		path_msg.local_xs.push_back(double(local.x));
+		path_msg.local_ys.push_back(double(local.y));
 		path_msg.altitudes.push_back(this->set_alt);
 		// handle heading
-		if(i < this->cells_path.size() - 1){
+		if(i < path.size() - 1){
 			// if not last point, heading is from current to next
-			// get next
-			this->utils.cells_to_local(cells_path[i+1], next_local);
-			// get heading
+			next_local = path[i+1];
 			double heading = this->utils.get_local_heading(next_local, local);
 			path_msg.headings.push_back(heading);
 		}
 		else{
-			// lst point, keep current heading
+			// last point, keep current heading
 			path_msg.headings.push_back(path_msg.headings.back());
 		}
 		// set local as next_local and move to next pt
@@ -198,9 +214,11 @@ void Costmap::find_path_and_publish(){
         	ROS_INFO("Costmap::act::publishing path to quad");
 			this->wp_path.clear();
 			ROS_WARN("Fake Goal");
-			this->wp_path.push_back(this->cell_goal); // this gets ERASED
+			this->wp_path.push_back(this->local_goal); // this nneds to be ERASED for trials
+			this->wp_path.push_back(cv::Point(100,50));
+			this->utils.local_to_cells(this->local_goal, this->cell_goal);
         	if(this->find_path(this->cells_path)){
-				ROS_INFO("Path length: %i", int(this->cells_path.size()));
+				//ROS_INFO("Path length: %i", int(this->cells_path.size()));
         		std::vector<Point2d> local_path;
         		this->utils.cells_to_local_path(this->cells_path, local_path);
 
@@ -212,8 +230,8 @@ void Costmap::find_path_and_publish(){
 				this->utils.add_agent_to_costmap_plot( orange, this->cells_path, this->cell_goal);
 				this->utils.display_costmap();
 
-        		//this->publish_travel_path(local_path);
-        		//this->publish_rviz_path(local_path);	
+        		this->publish_travel_path(local_path);
+        		this->publish_rviz_path(local_path);	
         	}
 		}
 	}
@@ -233,7 +251,9 @@ bool Costmap::find_path( std::vector<cv::Point> &cells_path ){
 		double length=0.0;
 		if(this->utils.a_star_path(s_wp_cells, e_wp_cells, cp, length)){
 			// a* found a path 
-			cells_path.insert(cells_path.end(), cp.begin()+1, cp.end());
+			if(cp.size() > 1){
+				cells_path.insert(cells_path.end(), cp.begin()+1, cp.end());
+			}
 		}
 		else{
 			// a* could not find a path, will also return path to current point
@@ -261,11 +281,11 @@ void Costmap::publish_Costmap_Bridge_Status(){
 }
 
 void Costmap::publish_rviz_path(const std::vector<Point2d> &path){
-	for(size_t i=0; i<path.size(); i++){
-		publishRvizMarker(path[i], 0.25, 1, 0);
+	for(size_t i=0; i<path.size(); i+=5){
+		publishRvizMarker(path[i], 2.0, 1, 3+round(i/5));
 	}
-	publishRvizMarker(this->local_loc, 0.5, 0, 0);
-	publishRvizMarker(this->local_goal, 0.5, 2, 0);
+	publishRvizMarker(this->local_loc, 5.0, 2, 1);
+	publishRvizMarker(this->local_goal, 5.0, 0, 2);
 }
 
 void Costmap::publishRvizMarker(const Point2d &loc, const double &radius, const int &color, const int &id){
@@ -286,8 +306,8 @@ void Costmap::publishRvizMarker(const Point2d &loc, const double &radius, const 
     marker.action = visualization_msgs::Marker::ADD;
 
     // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
-    marker.pose.position.x = (loc.y - map_offset.y)/4.8;
-    marker.pose.position.y = (loc.x - map_offset.x)/4.8;
+    marker.pose.position.x = loc.x;
+    marker.pose.position.y = loc.y;
     marker.pose.position.z = 1.5;
     marker.pose.orientation.w = 1.0;
 
@@ -313,6 +333,6 @@ void Costmap::publishRvizMarker(const Point2d &loc, const double &radius, const 
     	marker.color.b = 1.0f;
     }
 
-    marker.lifetime = ros::Duration(2);
+    marker.lifetime = ros::Duration(5);
     this->marker_publisher.publish(marker);
 }

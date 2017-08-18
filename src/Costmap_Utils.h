@@ -75,7 +75,6 @@ public:
 
 	// distances and planning
 	double get_cells_euclidian_distance(const cv::Point &a, const cv::Point &b);
-	bool a_star_distance(const cv::Point &sLoc, const cv::Point &gLoc, double &dist);
 	bool a_star_path(const cv::Point &sLoc, const cv::Point &gLoc, std::vector<cv::Point> &path, double &length);
 	double get_occ_penalty(const cv::Point &p); // get the occupancy at p
 	double a_star_heuristic;
