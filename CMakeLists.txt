@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(costmap_bridge)
 
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
@@ -13,14 +15,12 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   custom_messages
   cv_bridge 
-  image_transport
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
-
 ## include opencv
-find_package(OpenCV 3.2.0 REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(OpenCV 2 REQUIRED)
+#find_package(OpenCV 3.2.0 REQUIRED COMPONENTS core highgui imgproc imgcodecs)
+#include_directories(${OpenCV_INCLUDE_DIRS})
 
 ## custom messages
 #find_package(message_generation)
@@ -136,7 +136,10 @@ add_executable(costmap_bridge
 	src/Costmap.cpp
 	src/Costmap_Utils.cpp)
 
-target_link_libraries(costmap_bridge ${catkin_LIBRARIES})
+target_link_libraries(costmap_bridge ${catkin_LIBRARIES} ${OpenCV_LIBS})
+#target_link_libraries(costmap_bridge ${catkin_LIBRARIES} opencv_core opencv_imgproc opencv_highgui opencv_imgcodecs)
+
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

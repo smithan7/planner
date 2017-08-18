@@ -50,9 +50,8 @@ using namespace cv;
 class Costmap{
 public:
 
-	Costmap(ros::NodeHandle nh, char* param_file);
+	Costmap(ros::NodeHandle nh);//, std::string param_file);
 	~Costmap();
-	char* param_file_name;
 
 	// subscribe to zed costmap
 	ros::Subscriber costmap_subscriber;
@@ -76,7 +75,7 @@ public:
 
 	// publish to dji_bridge
 	ros::Publisher path_publisher;
-	void publish_travel_path(const std::vector<Point2f> &path);
+	void publish_travel_path(const std::vector<Point2d> &path);
 	void find_path_and_publish();
 	bool find_path(std::vector<Point> &cells_path);
 
@@ -86,31 +85,31 @@ public:
 
 	// publish stuff to RVIZ
 	ros::Publisher marker_publisher;
-	void publish_rviz_path(const std::vector<Point2f> &path);
-	void publishRvizMarker(const Point2f &loc, const double &radius, const int &color, const int &id);
+	void publish_rviz_path(const std::vector<Point2d> &path);
+	void publishRvizMarker(const Point2d &loc, const double &radius, const int &color, const int &id);
 
 	bool travelling, waiting, emergency_stopped;
 
 	// map metadata
 	double meters_per_cell;
 	Point map_offset;
-	Point2f map_local_origin;
+	Point2d map_local_origin;
 
 	// costmap planning stuff
 	Point cell_loc, cell_goal;
-	Point2f local_loc, local_goal, published_local_goal;
+	Point2d local_loc, local_goal, published_local_goal;
 	bool locationInitialized, costmapInitialized;
 
 	double travelSpeed; // my travelling speed
 	double set_alt;
 	
-	ros::Time act_time, plot_time, report_time;
-	ros::Duration act_interval, plot_interval, report_interval;
+	ros::Time act_time, plot_time, status_time;
+	ros::Duration act_interval, plot_interval, status_interval;
 	
 	// working
 	ros::Time actTimer;
 
-	std::vector<cv::Point2f> wp_path;
+	std::vector<cv::Point2d> wp_path;
 	vector<cv::Point> cells_path;
 
 	// costmap class stuff

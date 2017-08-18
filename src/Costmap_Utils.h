@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include <vector>
 
 //using namespace std;
@@ -31,7 +31,7 @@ public:
 	cv::Mat euclidDist; // array of distances
 	bool pay_obstacle_costs; // am I affected by obstacles?
 
-	cv::Point2f NW_Corner, SE_Corner; // map boundaries
+	cv::Point2d NW_Corner, SE_Corner; // map boundaries
 
 	// values 
 	int obsFree, infFree, obsOccupied, infOccupied;
@@ -40,9 +40,8 @@ public:
 	double obsFree_cost, infFree_cost, obsOcc_cost, infOcc_cost;
 	bool need_initialization;
 	cv::Point map_size_cells;
-	cv::Point2f map_size_meters;
-	cv::Point2f cells_per_meter, meters_per_cell;
-	cv::Point2f offset_in_meters;
+	cv::Point2d map_size_meters;
+	cv::Point2d cells_per_meter, meters_per_cell;
 
 	// 1 = free space // 2 = inferred free space // 3 = domFree
 	// 101 = unknown
@@ -53,9 +52,9 @@ public:
 	virtual ~Costmap_Utils();
 
 	// set map size
-    bool initialize_costmap(char* param_file);
+    bool initialize_costmap();
     // use satelite info to seed the exploration
-	void seed_img(const cv::String &img_name);
+	void seed_img();
     // update cells with observation
 	void update_cells(const std::vector<int8_t> &occupancy_grid_array, std::vector<cv::Point> &u_pts, std::vector<int> &u_types);
 	// used to share updates with team
@@ -64,15 +63,15 @@ public:
 	// used to get from occ_grid array to cells
 	cv::Point get_cell_index(const int &l);
 
-	void cells_to_local_path(const std::vector<cv::Point> &cells_path, std::vector<cv::Point2f> &local_path);
-	void cells_to_local(const cv::Point &cell, cv::Point2f &loc);
-	void cells_path_to_local_path(const std::vector<cv::Point> &cp, std::vector<cv::Point2f> &lp);
-	void local_to_cells(const cv::Point2f &loc, cv::Point &cell);
-	void local_to_global(const cv::Point2f &local, cv::Point2f &global);
+	void cells_to_local_path(const std::vector<cv::Point> &cells_path, std::vector<cv::Point2d> &local_path);
+	void cells_to_local(const cv::Point &cell, cv::Point2d &loc);
+	void cells_path_to_local_path(const std::vector<cv::Point> &cp, std::vector<cv::Point2d> &lp);
+	void local_to_cells(const cv::Point2d &loc, cv::Point &cell);
+	void local_to_global(const cv::Point2d &local, cv::Point2d &global);
 
 	// for putting the path together
-	double get_local_heading(const cv::Point2f &l1, const cv::Point2f &l2);
-	double get_local_euclidian_distance(const cv::Point2f &l1, const cv::Point2f &l2);
+	double get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2);
+	double get_local_euclidian_distance(const cv::Point2d &l1, const cv::Point2d &l2);
 
 	// distances and planning
 	double get_cells_euclidian_distance(const cv::Point &a, const cv::Point &b);
@@ -87,8 +86,8 @@ public:
 	void add_agent_to_costmap_plot(const cv::Scalar &color, const std::vector<cv::Point> &myPath, const cv::Point &cLoc);
 
 	// true util functions
-	double get_global_distance(const cv::Point2f &g1, const cv::Point2f &g2);
-	double get_global_heading(const cv::Point2f &g1, const cv::Point2f &g2);
+	double get_global_distance(const cv::Point2d &g1, const cv::Point2d &g2);
+	double get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2);
 	double to_radians(const double &deg);
 	bool point_in_cells(const cv::Point &p);
 };

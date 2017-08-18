@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<cells_width>1000</cells_width>
+<cells_height>1000</cells_height>
+<nw_longitude>-123.251004</nw_longitude>
+<nw_latitude>44.539847</nw_latitude>
+<se_longitude>-123.247446</se_longitude>
+<se_latitude>44.538552</se_latitude>
+<obstacle_image>/home/nvidia/catkin_ws/src/costmap_bridge/hardware_obstacles.png</obstacle_image>
+<pay_obstacle_costs>1</pay_obstacle_costs>
+</opencv_storage>
