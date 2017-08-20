@@ -17,8 +17,8 @@ using namespace std;
 using namespace cv;
 
 Agent::Agent(ros::NodeHandle nHandle, std::string world_param_file){
-	
-	this->world = new World(world_param_file);;	
+	ROS_WARN("Agent::Agent:: create new world loaded");
+	this->world = new World(world_param_file);
 	this->n_tasks =  this->world->get_n_nodes();
 
 	// set these in param file
@@ -36,13 +36,10 @@ Agent::Agent(ros::NodeHandle nHandle, std::string world_param_file){
 
 	ROS_INFO("In");
 
-	// initialize cell locs
-	this->cell_loc= Point(-1,-1);
-	this->cell_goal = Point(50,50);
 	// initialize local locs
-	this->local_loc = Point2d(-1.0, -1.0);
-	this->local_goal = Point2d(50.0, 50.0);
-	this->published_local_goal = Point2d(-1, -1);
+	this->loc = Point2d(-1.0, -1.0);
+	this->goal = Point2d(50.0, 50.0);
+	this->published_goal = Point2d(-1, -1);
 	// set initial flags false
 	this->locationInitialized = false;
 	this->costmapInitialized = false;
@@ -82,8 +79,8 @@ Agent::~Agent(){
 
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){	
 	// move these two to DJI_Bridge status callback, find out which node I am on
-	cv::Point2d gps_in(status_in.longitude, status_in.latitude);
-	this->get_prm_location(gps_in, this->edge, this->edge_progress);
+	this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
+	this->World->get_prm_location(this->edge, this->edge_progress);
 	
 	locationInitialized = true;
 
@@ -126,6 +123,7 @@ void Agent::act() {
 
 void Agent::get_prm_location(const cv::Point2d &gps_in, cv::Point2i &edge_out, double &progress){
 	// go through the PRM and find the 2 nodes I am closest to. edge_out.x = closest, edge_out.y = 2nd closest. progress is (dist to x)/(dist between x and y)
+	ROS_WARN("Agent::get_prm_location::TODO write world get_prm_location");
 	this->world->get_prm_location(gps_in, edge_out, progress);
 }
 
@@ -134,9 +132,9 @@ void Agent::Costmap_Bridge_status_callback( const custom_messages::Costmap_Bridg
 }
 
 void Agent::find_path_and_publish(){
-	if( ros::Time::now() - this->actTimer > this->act_interval || this->published_local_goal != this->local_goal ){
-		this->published_local_goal = this->local_goal;
-		this->actTimer = ros::Time::now();
+	if( ros::Time::now() - this->act_time > this->act_interval || this->published_goal != this->goal ){
+		this->published_goal = this->goal;
+		this->act_time = ros::Time::now();
 
 		bool flag = false;
 		if( this->locationInitialized ){
@@ -153,11 +151,11 @@ void Agent::find_path_and_publish(){
 
         if( flag || true ){
         	ROS_INFO("Agent::act::publishing path to costmap_bridge");
-			this->wp_path.clear();
-			ROS_WARN("Fake Goal");
-			this->wp_path.push_back(this->goal); // this needs to be ERASED for trials
-        	if(this->find_path(this->wp_path)){
-        		this->publish_travel_path(this->wp_path);	
+			this->path.clear();
+			ROS_WARN("Agent::find path and publish::TODO: remove Fake Goal");
+			this->path.push_back(this->goal); // this needs to be ERASED for trials
+        	if(this->find_path(this->path)){
+        		this->publish_travel_path(this->path);	
         	}
 		}
 	}
@@ -188,16 +186,15 @@ bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 
 void Agent::publish_Agent_Status(){
 	custom_messages::Planner_Status_MSG msg;
-	msg.longitude = this->local_loc.x;
-	msg.latitude = this->local_loc.y;
-	msg.altitude = this->set_alt;
-	msg.heading = 0.0;
-	msg.goal_longitude = this->local_goal.x;
-	msg.goal_latitude = this->local_goal.y;
+	msg.longitude = this->loc.x;
+	msg.latitude = this->loc.y;
+	msg.goal_longitude = this->goal.x;
+	msg.goal_latitude = this->goal.y;
 
 	msg.travelling = this->travelling;
 	msg.emergency_stopped = this->emergency_stopped;
 	msg.waiting = this->waiting;
+	msg.planning = this->planning;
 	this->status_publisher.publish(msg);
 }
 
@@ -230,7 +227,7 @@ bool Agent::at_goal() { // am I at my goal node?
 	if (this->edge_progress >= 0.9 && this->edge.y == this->goal_node->get_index()) {
 		return true;
 	}
-	else if (this->edge_progress =< 0.1 && this->edge.x == this->goal_node->get_index()) {
+	else if (this->edge_progress <= 0.1 && this->edge.x == this->goal_node->get_index()) {
 		return true;
 	}
 	else{

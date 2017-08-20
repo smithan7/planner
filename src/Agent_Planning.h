@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include<iostream>
+#include<string> // for string class
 
 class World;
 class Probability_Node;
@@ -21,11 +23,13 @@ private:
 	World* world;
 	MCTS* my_tree;
 	std::string task_selection_method; // how do I select tasks
+	std::string task_claim_method; // how do I claim tasks
+	std::string task_claim_time; // when do I claim tasks
 
 
 
-	void set_goal(int goal_index);
-	void set_goal(int goal_index, const std::vector<std::string> args, const std::vector<double> vals);
+	void set_goal(const int &goal_index);
+	void set_goal(const int &goal_index, const std::vector<std::string> &args, const std::vector<double> &vals);
 	// greedy by time
 	void select_greedy_task_by_arrival_time();
 	void select_greedy_task_by_completion_time();

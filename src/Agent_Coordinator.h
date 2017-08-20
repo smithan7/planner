@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include<iostream>
+#include<string> // for string class
 
 class Probability_Node;
 class World;

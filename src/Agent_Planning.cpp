@@ -294,7 +294,7 @@ void Agent_Planning::MCTS_task_by_completion_value_impact()
 {
 }
 
-void Agent_Planning::set_goal(int goal_index) {
+void Agent_Planning::set_goal(const int &goal_index) {
 	// create a new goal from scratch, reset everything!
 	this->owner->get_goal()->set_index(goal_index);
 	std::vector<int> path;
@@ -319,7 +319,7 @@ void Agent_Planning::set_goal(int goal_index) {
 	this->owner->get_goal()->set_completion_reward(world->get_nodes()[goal_index]->get_reward_at_time(this->owner->get_goal()->get_completion_time()));
 }
 
-void Agent_Planning::set_goal(int goal_index, const std::vector<std::string> args, const std::vector<double> vals) {
+void Agent_Planning::set_goal(const int &goal_index, const std::vector<std::string> &args, const std::vector<double> &vals) {
 	
 	bool need_distance = true;
 	bool need_current_reward = true;
