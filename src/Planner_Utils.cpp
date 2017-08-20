@@ -1,5 +1,5 @@
 /*
- * Costmap.cpp
+ * Planner.cpp
  *
  *  Created on: Jul 12, 2016
  *      Author: andy
@@ -8,7 +8,7 @@
 
 
 
-#include "Costmap_Utils.h"
+#include "Planner_Utils.h"
 
 bool pointCompare(const cv::Point &a, const cv::Point &b);
 bool pointOnMat(const cv::Point &a, const cv::Mat &b);
@@ -16,7 +16,7 @@ std::vector<cv::Point> get_image_points_at_intensity(const cv::Mat &image, const
 double lin_interp(const double &p_min, const double &p_max, const double &p);
 
 
-Costmap_Utils::Costmap_Utils(){
+Planner_Utils::Planner_Utils(){
 
 	// I need to be initialized
 	this->need_initialization = true;
@@ -50,10 +50,10 @@ Costmap_Utils::Costmap_Utils(){
 
 }
 
-Costmap_Utils::~Costmap_Utils() {}
+Planner_Utils::~Planner_Utils() {}
 
-bool Costmap_Utils::initialize_costmap(){
-	std::string filename = "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml";	
+bool Planner_Utils::initialize_costmap(){
+	std::string filename = "/home/nvidia/catkin_ws/src/costmap_bridge/test_params.xml";	
 	/*
 	ROS_INFO("writing param file");
 	std::string filename = "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml";
@@ -71,10 +71,10 @@ bool Costmap_Utils::initialize_costmap(){
 	*/
     cv::FileStorage fs(filename, cv::FileStorage::READ);
     if (!fs.isOpened()){
-        ROS_ERROR("Costmap_Utils::initialize_costmap::Failed to open /home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml");
+        ROS_ERROR("Planner_Utils::initialize_costmap::Failed to open %s", filename);
         return false;
     }
-	ROS_INFO("Costmap_Utils::initialize_costmap::Opened /home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml");
+	ROS_INFO("Planner_Utils::initialize_costmap::Opened: %s", filename);
 
 
     int toll = (int) fs["pay_obstacle_costs"];
@@ -95,13 +95,13 @@ bool Costmap_Utils::initialize_costmap(){
 	std::string img_name;
 	fs["obstacle_img"] >> img_name;
 	fs.release();
-	ROS_INFO("Costmap_Utils::initialize_costmap::origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
+	ROS_INFO("Planner_Utils::initialize_costmap::origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
 		
 
 	// initialize cells
 	cv::Mat a = cv::Mat::ones( this->map_size_cells.y, this->map_size_cells.x, CV_16S)*this->infFree;
 	this->cells = a.clone();
-	ROS_INFO("cells size: %i, %i", this->cells.cols, this->cells.rows);
+	ROS_INFO("map size: %i, %i (cells)", this->cells.cols, this->cells.rows);
 	
 	// seed euclid distance, makes everything faster
 	a = cv::Mat::ones( this->cells.size(), CV_32FC1)*-1;
@@ -118,7 +118,7 @@ bool Costmap_Utils::initialize_costmap(){
 	this->map_size_meters.x = abs(d*sin(b));
 	this->map_size_meters.y = abs(d*cos(b));
 	
-	ROS_INFO("map size: %0.2f, %0.2f (m)", this->map_size_meters.x, this->map_size_meters.y);
+	ROS_INFO("map size: %0.2f, %0.2f (meters)", this->map_size_meters.x, this->map_size_meters.y);
 	
 	// set cells per meter
 	this->meters_per_cell.x = this->map_size_meters.x / double(this->map_size_cells.x);
@@ -131,8 +131,8 @@ bool Costmap_Utils::initialize_costmap(){
 	if(pay_obstacle_costs){
 		this->obsFree_cost = 0.0;
 		this->infFree_cost = 0.05;
-		this->infOcc_cost = 0.5;
-		this->obsOcc_cost = 10;
+		this->infOcc_cost = 1.0;
+		this->obsOcc_cost = 10.0;
 	}
 	else{
 		this->obsFree_cost = 0.0;
@@ -144,14 +144,14 @@ bool Costmap_Utils::initialize_costmap(){
 	// announce I am initialized!
 	this->need_initialization = false;
 
-	ROS_INFO("Costmap_Utils::initialize_costmap::complete");
+	ROS_INFO("Planner_Utils::initialize_costmap::complete");
 	return true;
 }
 
-void Costmap_Utils::seed_img(){
+void Planner_Utils::seed_img(){
 	cv::Mat seed = cv::imread("/home/nvidia/catkin_ws/src/costmap_bridge/hardware_obstacles.png", CV_LOAD_IMAGE_GRAYSCALE);
 	if(!seed.data){
-		ROS_ERROR("Costmap::seed_img::Could NOT load img");
+		ROS_ERROR("Planner::seed_img::Could NOT load img");
 		return;
 	}
 
@@ -190,7 +190,7 @@ void Costmap_Utils::seed_img(){
 	*/
 }
 
-void Costmap_Utils::update_cells( const std::vector<int8_t> &occupancy_grid_array, std::vector<cv::Point> &u_pts, std::vector<int> &u_types){
+void Planner_Utils::update_cells( const std::vector<int8_t> &occupancy_grid_array, std::vector<cv::Point> &u_pts, std::vector<int> &u_types){
 	
 	u_pts.clear();
 	u_types.clear();
@@ -225,7 +225,7 @@ void Costmap_Utils::update_cells( const std::vector<int8_t> &occupancy_grid_arra
 	}
 }
 
-void Costmap_Utils::team_map_update( const std::vector<int> &xs, const std::vector<int> &ys, const std::vector<int> &ts){
+void Planner_Utils::team_map_update( const std::vector<int> &xs, const std::vector<int> &ys, const std::vector<int> &ts){
 
 	if( this->need_initialization ){
 		return;
@@ -248,7 +248,7 @@ void Costmap_Utils::team_map_update( const std::vector<int> &xs, const std::vect
 	}
 }
 
- cv::Point Costmap_Utils::get_cell_index(const int &l){
+ cv::Point Planner_Utils::get_cell_index(const int &l){
  	// this is from a single vector representation of the map
 	cv::Point p;
 	p.x = floor( l / this->map_size_cells.x );
@@ -257,7 +257,7 @@ void Costmap_Utils::team_map_update( const std::vector<int> &xs, const std::vect
 	return p;
 }
 
-void Costmap_Utils::cells_to_local_path(const std::vector<cv::Point> &cells_path, std::vector<cv::Point2d> &local_path){
+void Planner_Utils::cells_to_local_path(const std::vector<cv::Point> &cells_path, std::vector<cv::Point2d> &local_path){
 	local_path.clear();
 
 	for(size_t i=0; i<cells_path.size(); i++){
@@ -267,29 +267,29 @@ void Costmap_Utils::cells_to_local_path(const std::vector<cv::Point> &cells_path
 	}
 }
 
-void Costmap_Utils::cells_to_local(const cv::Point &cell, cv::Point2d &loc){
+void Planner_Utils::cells_to_local(const cv::Point &cell, cv::Point2d &loc){
 	// convert from cell to local
 	loc.x = double(cell.x) * this->meters_per_cell.x;
 	loc.y = double(cell.y) * this->meters_per_cell.y;
 }
 
 
-void Costmap_Utils::local_to_cells(const cv::Point2d &loc, cv::Point &cell){
+void Planner_Utils::local_to_cells(const cv::Point2d &loc, cv::Point &cell){
 	// move from local x/y meters to costmap cell
 	cell.x = round(this->cells_per_meter.x * loc.x);
 	cell.y = round(this->cells_per_meter.y * loc.y);
 }
 
-double Costmap_Utils::get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2){
+double Planner_Utils::get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2){
 	double heading = atan2(l2.x-l1.x,l2.y-l1.y);
 	return heading;
 }
 
-double Costmap_Utils::get_local_euclidian_distance(const cv::Point2d &a, const cv::Point2d &b){
+double Planner_Utils::get_local_euclidian_distance(const cv::Point2d &a, const cv::Point2d &b){
 	return sqrt( pow(a.x - b.x,2) + pow(a.y - b.y,2) );
 }
 
-double Costmap_Utils::get_cells_euclidian_distance(const cv::Point &a, const cv::Point &b){
+double Planner_Utils::get_cells_euclidian_distance(const cv::Point &a, const cv::Point &b){
 	int dx = abs(a.x - b.x);
 	int dy = abs(a.x - b.y);
 
@@ -300,7 +300,7 @@ double Costmap_Utils::get_cells_euclidian_distance(const cv::Point &a, const cv:
 }
 
 
-bool Costmap_Utils::a_star_path(const cv::Point &sLoc, const cv::Point &gLoc, std::vector<cv::Point> &path, double &length){
+bool Planner_Utils::a_star_path(const cv::Point &sLoc, const cv::Point &gLoc, std::vector<cv::Point> &path, double &length){
 
 	if(this->need_initialization){
 		return false;
@@ -409,7 +409,7 @@ bool Costmap_Utils::a_star_path(const cv::Point &sLoc, const cv::Point &gLoc, st
 	return false;
 }
 
-double Costmap_Utils::get_occ_penalty(const cv::Point &p){
+double Planner_Utils::get_occ_penalty(const cv::Point &p){
 	if(this->cells.at<short>(p) == this->obsFree){
 		return this->obsFree_cost;
 	}
@@ -428,13 +428,13 @@ double Costmap_Utils::get_occ_penalty(const cv::Point &p){
 	}
 }
 
-void Costmap_Utils::display_costmap(){ // show nice display plot and number it
+void Planner_Utils::display_costmap(){ // show nice display plot and number it
 	cv::namedWindow("Cells Mat", cv::WINDOW_NORMAL);
 	cv::imshow("Cells Mat", this->displayPlot);
 	cv::waitKey(1);
 }
 
-void Costmap_Utils::build_cells_plot(){
+void Planner_Utils::build_cells_plot(){
 	this->displayPlot= cv::Mat::zeros(cells.size(), CV_8UC3);
 	for(int i=0; i<this->cells.cols; i++){
 		for(int j=0; j<this->cells.rows; j++){
@@ -455,7 +455,7 @@ void Costmap_Utils::build_cells_plot(){
 	}
 }
 
-void Costmap_Utils::add_agent_to_costmap_plot(const cv::Scalar &color, const std::vector<cv::Point> &path, const cv::Point &cLoc){
+void Planner_Utils::add_agent_to_costmap_plot(const cv::Scalar &color, const std::vector<cv::Point> &path, const cv::Point &cLoc){
 	circle(this->displayPlot, cLoc, 20, color, -1);
 	for(size_t i=1; i<path.size(); i++){
 		cv::Point a = path[i];
@@ -500,7 +500,7 @@ double lin_interp(const double &p_min, const double &p_max, const double &p){
 	return (p-p_min)/(p_max-p_min);
 }
 
-double Costmap_Utils::get_global_distance(const cv::Point2d &g1, const cv::Point2d &g2){
+double Planner_Utils::get_global_distance(const cv::Point2d &g1, const cv::Point2d &g2){
 	double R = 6378136.6; // radius of the earth in meters
 
 	double lat1 = this->to_radians(g1.y);
@@ -518,7 +518,7 @@ double Costmap_Utils::get_global_distance(const cv::Point2d &g1, const cv::Point
 	return distance;
 }
 
-double Costmap_Utils::get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2){
+double Planner_Utils::get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2){
 	double lat1 = this->to_radians(g1.y);
 	double lat2 = this->to_radians(g2.y);
 
@@ -532,11 +532,11 @@ double Costmap_Utils::get_global_heading(const cv::Point2d &g1, const cv::Point2
 	return heading;
 }
 
-double Costmap_Utils::to_radians(const double &deg){
+double Planner_Utils::to_radians(const double &deg){
 	return deg*3.141592653589 / 180.0;
 }
 
-bool Costmap_Utils::point_in_cells(const cv::Point &p){
+bool Planner_Utils::point_in_cells(const cv::Point &p){
 	if(p.x >= 0 && p.y >= 0){
 		if(p.x < this->map_size_cells.x && p.y < this->map_size_cells.y){
 			return true;
@@ -546,7 +546,7 @@ bool Costmap_Utils::point_in_cells(const cv::Point &p){
 }
 
 /*
-Point2d Costmap_Utils::local_to_global(const Point2d &local){
+Point2d Planner_Utils::local_to_global(const Point2d &local){
 	Point2d global;
 
 	double C_EARTH = 6378136.6;
@@ -561,7 +561,7 @@ Point2d Costmap_Utils::local_to_global(const Point2d &local){
 	return global;
 }
 
-Point2d Costmap_Utils::global_to_local(const Point2d &global){
+Point2d Planner_Utils::global_to_local(const Point2d &global){
 	Point2d local;
 	double d = distance_from_a_to_b( home_lati, origin_longti, lati, longti )
 	double b = heading_from_a_to_b( home_lati, origin_longti, lati, longti )

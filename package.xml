@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>costmap_bridge</name>
+  <name>distributed_planner</name>
   <version>0.0.0</version>
-  <description>The costmap_bridge package links the zed to the creation of a costmap. It can also plan a path through itself using A*</description>
+  <description>Houses planner for distributed planner</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

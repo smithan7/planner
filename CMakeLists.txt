@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(costmap_bridge)
+project(distributed_planner)
 
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
@@ -131,12 +131,19 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(costmap_bridge
-	src/Costmap_Bridge.cpp 
-	src/Costmap.cpp
-	src/Costmap_Utils.cpp)
+add_executable(distributed_planner
+	src/Distributed_Planner_Linker.cpp 
+	src/Agent.cpp
+	src/Agent_Coordinator.cpp
+	src/Agent_Planning.cpp
+	src/Fuzzy_Bin.cpp
+	src/Goal.cpp
+	src/Map_Node.cpp
+	src/Planner_Utils.cpp
+	src/Probability_Node.cpp
+	src/World.cpp)
 
-target_link_libraries(costmap_bridge ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(distributed_planner ${catkin_LIBRARIES} ${OpenCV_LIBS})
 #target_link_libraries(costmap_bridge ${catkin_LIBRARIES} opencv_core opencv_imgproc opencv_highgui opencv_imgcodecs)
 
 

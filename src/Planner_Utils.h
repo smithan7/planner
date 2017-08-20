@@ -1,5 +1,5 @@
 /*
- * Costmap.h
+ * Planner.h
  *
  *  Created on: Jul 12, 2016
  *      Author: andy
@@ -22,7 +22,7 @@
 //using namespace std;
 //using namespace cv;
 
-class Costmap_Utils {
+class Planner_Utils {
 public:
 
 	// useful stuff
@@ -48,8 +48,8 @@ public:
 	// 201 = wall // 202 = inferred wall // 203 = inflated wall
 
 	// functions
-	Costmap_Utils();
-	virtual ~Costmap_Utils();
+	Planner_Utils();
+	virtual ~Planner_Utils();
 
 	// set map size
     bool initialize_costmap();
