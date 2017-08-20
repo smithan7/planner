@@ -6,20 +6,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <vector>
+#include <string>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
-#include <vector>
+
 
 class Map_Node;
 class Agent;
 class Task;
 
-class World
-{
+class World{
 public:
-	World(const int &param_file, const bool &display_plot, const std::vector<cv::String> &task_selection_method, const cv::String &img_name);
+	World( const std::string &param_file);
+	//World(const int &param_file, const bool &display_plot, const std::vector<cv::String> &task_selection_method, const cv::String &img_name);
 	// doing everything
 	double get_team_probability_at_time_except(const double & time, const int & task, const int & except_agent);
 	~World();
@@ -32,7 +34,7 @@ public:
 	double get_c_time() { return this->c_time; };
 	double get_dt() { return this->dt; };
 	double get_end_time() { return this->end_time; };
-	cv::String get_task_selection_method() { return this->task_selection_method[this->test_iter]; };
+	std::string get_task_selection_method() { return this->task_selection_method; };
 
 
 	// utility functions
@@ -47,10 +49,16 @@ public:
 	double rand_double_in_range(const double & min, const double & max);
 	bool valid_node(const int & n);
 	bool valid_agent(const int a);
-	
-private:
 
-	int test_iter, n_iterations;
+	// brought over from ROS
+	bool get_prm_location(const cv::Point2d&loc, cv::Point &edge, double &edge_progress);
+	double to_radians(const double &deg);
+	double get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2);
+	double get_global_distance(const cv::Point2d &g1, const cv::Point2d &g2);
+	double get_local_euclidian_distance(const cv::Point2d &a, const cv::Point2d &b);
+	double get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2);
+
+private:
 	double c_time, dt, end_time;
 
 	bool show_display;
@@ -62,7 +70,7 @@ private:
 
 	std::vector<Map_Node*> nodes;
 	std::vector<Agent*> agents;
-	cv::String task_selection_method;
+	std::string task_selection_method;
 	
 	// initialize everything
 	int param_file_index;

@@ -17,7 +17,53 @@
 #include <opencv2\highgui.hpp>
 #include <opencv2\imgproc.hpp>
 
-World::World(const int &param_file, const bool &display_plot, const std::vector<cv::String> &task_selection_method, const cv::String &img_name ) {
+//World::World(const int &param_file, const bool &display_plot, const std::vector<cv::String> &task_selection_method, const cv::String &img_name ) 
+World::World(const std::string &param_file){
+
+	std::string filename = "/home/nvidia/catkin_ws/src/7distributed_planner/test_params.xml";	
+	/*
+	ROS_INFO("writing param file");
+	std::string filename = "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml";
+    cv::FileStorage fr(filename, cv::FileStorage::WRITE);
+    fr << "cells_width" << 1000;
+    fr << "cells_height" << 1000;
+	fr << "nw_longitude" <<-123.251004;
+	fr << "nw_latitude" << 44.539847;
+	fr << "se_longitude" << -123.247446;
+	fr << "se_latitude" << 44.538552;
+    fr << "obstacle_image" << "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_obstacles.png";
+    fr << "pay_obstacle_costs" << 1;
+    fr.release();
+    ROS_INFO("wrote param file");
+	*/
+    cv::FileStorage fs(param_file, cv::FileStorage::READ);
+    if (!fs.isOpened()){
+        ROS_ERROR("World::World::Failed to open %s", filename);
+        return false;
+    }
+	ROS_INFO("World::World::Opened: %s", filename);
+
+    int toll = (int) fs["pay_obstacle_costs"];
+    if(toll == 1){
+    	this->pay_obstacle_costs = true;
+    }
+    else{
+    	this->pay_obstacle_costs = false;
+    }
+    
+    fs["cells_width"] >> this->map_size_cells.x;
+    fs["cells_height"] >> this->map_size_cells.y;
+	ROS_INFO("cells size: %i, %i", this->map_size_cells.x, this->map_size_cells.y);
+	fs["nw_longitude"] >> this->NW_Corner.x;
+	fs["nw_latitude"] >> this->NW_Corner.y;
+	fs["se_longitude"] >> this->SE_Corner.x;
+	fs["se_latitude"] >> this->SE_Corner.y;
+	std::string img_name;
+	fs["obstacle_img"] >> img_name;
+	fs.release();
+	ROS_INFO("Planner_Utils::initialize_costmap::origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
+
+
 	this->show_display = display_plot;
 	this->param_file_index = param_file;
 	this->n_iterations = int(task_selection_method.size());
@@ -38,7 +84,167 @@ World::World(const int &param_file, const bool &display_plot, const std::vector<
 	this->display_world(1);
 }
 
+bool Planner_Utils::initialize_costmap(){
 
+		
+
+	// initialize cells
+	cv::Mat a = cv::Mat::ones( this->map_size_cells.y, this->map_size_cells.x, CV_16S)*this->infFree;
+	this->cells = a.clone();
+	ROS_INFO("map size: %i, %i (cells)", this->cells.cols, this->cells.rows);
+	
+	// seed euclid distance, makes everything faster
+	a = cv::Mat::ones( this->cells.size(), CV_32FC1)*-1;
+	this->euclidDist = a.clone();
+
+
+	// seed into cells satelite information
+	this->seed_img();
+
+	ROS_INFO("nw / se: (%0.6f, %0.6f) / (%0.6f, %0.6f)", this->NW_Corner.x, this->NW_Corner.y, this->SE_Corner.x, this->SE_Corner.y);
+	// set map width / height in meters
+	double d = this->get_global_distance(this->NW_Corner, this->SE_Corner);
+	double b = this->get_global_heading(this->NW_Corner, this->SE_Corner);
+	this->map_size_meters.x = abs(d*sin(b));
+	this->map_size_meters.y = abs(d*cos(b));
+	
+	ROS_INFO("map size: %0.2f, %0.2f (meters)", this->map_size_meters.x, this->map_size_meters.y);
+	
+	// set cells per meter
+	this->meters_per_cell.x = this->map_size_meters.x / double(this->map_size_cells.x);
+	this->meters_per_cell.y = this->map_size_meters.y / double(this->map_size_cells.y);
+
+	// set meters per cell
+	this->cells_per_meter.x = double(this->map_size_cells.x) / this->map_size_meters.x;
+	this->cells_per_meter.y = double(this->map_size_cells.y) / this->map_size_meters.y;
+
+	if(pay_obstacle_costs){
+		this->obsFree_cost = 0.0;
+		this->infFree_cost = 0.05;
+		this->infOcc_cost = 1.0;
+		this->obsOcc_cost = 10.0;
+	}
+	else{
+		this->obsFree_cost = 0.0;
+		this->infFree_cost = 0.0;
+		this->infOcc_cost = 0.0;
+		this->obsOcc_cost = 0.0;
+	}
+
+	// announce I am initialized!
+	this->need_initialization = false;
+
+	ROS_INFO("Planner_Utils::initialize_costmap::complete");
+	return true;
+}
+
+bool World::get_prm_location(const cv::Point2d&loc, cv::Point &edge, double &edge_progress){
+	// am I on the map?
+	if(!this->on_map(loc){
+		return false;
+	}
+
+	double min1 = double(INFINITY);
+	double min2 = double(INFINITY);
+	int ind1 = -1;
+	int ind2 = -1;
+	for(int i=0; i<this->n_nodes; i++){
+		double d = this->get_euclid_dist(loc, this->map_nodes[i]->get_loc());
+		if(d < min1){
+			min2 = min1;
+			ind2 = ind1;
+			min1 = d;
+			ind1 = i;
+		}
+		else if(d < min1){
+			min2 = d;
+			ind2 = i;
+		}
+	}
+	
+	if(ind1 > -1 && ind2 > -1){
+		edge.x = ind1;
+		edge.y = ind2;
+		double dist = this->get_euclid_dist(this->map_nodes[ind1]->get_loc(), this->map_nodes[ind2]->get_loc());
+		edge_progress = min1/dist;
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+double World::get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2){
+	double heading = atan2(l2.x-l1.x,l2.y-l1.y);
+	return heading;
+}
+
+double World::get_local_euclidian_distance(const cv::Point2d &a, const cv::Point2d &b){
+	return sqrt( pow(a.x - b.x,2) + pow(a.y - b.y,2) );
+}
+
+double World::get_global_distance(const cv::Point2d &g1, const cv::Point2d &g2){
+	double R = 6378136.6; // radius of the earth in meters
+
+	double lat1 = this->to_radians(g1.y);
+	double lon1 = this->to_radians(g1.x);
+	double lat2 = this->to_radians(g2.y);
+	double lon2 = this->to_radians(g2.x);
+
+	double dlon = lon2 - lon1;
+	double dlat = lat2 - lat1;
+
+	double a = pow(sin(dlat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dlon / 2), 2);
+	double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+	double distance = R * c; // in meters
+	return distance;
+}
+
+double World::get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2){
+	double lat1 = this->to_radians(g1.y);
+	double lat2 = this->to_radians(g2.y);
+
+	double dLong = this->to_radians(g2.x - g1.x);
+
+	double x = sin(dLong) * cos(lat2);
+	double y = cos(lat1) * sin(lat2) - (sin(lat1)*cos(lat2)*cos(dLong));
+
+	double heading = atan2(x, y);
+
+	return heading;
+}
+
+double World::to_radians(const double &deg){
+	return deg*3.141592653589 / 180.0;
+}
+
+/*
+Point2d Planner_Utils::local_to_global(const Point2d &local){
+	Point2d global;
+
+	double C_EARTH = 6378136.6;
+	double dlati = local.x / C_EARTH;
+	double lati = dlati + this->origin_lati;
+	dlongti = y / ( C_EARTH * math.cos(lati / 2.0 + origin_lati / 2.0) )
+	longti = dlongti + origin_longti
+
+	return [lati, longti]
+
+
+	return global;
+}
+
+Point2d Planner_Utils::global_to_local(const Point2d &global){
+	Point2d local;
+	double d = distance_from_a_to_b( home_lati, origin_longti, lati, longti )
+	double b = heading_from_a_to_b( home_lati, origin_longti, lati, longti )
+
+	local.x = -d*math.sin(b)
+	local.y = d*math.cos(b)
+
+	return local;
+}
 
 void World::score_and_record_all() {
 
