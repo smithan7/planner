@@ -139,7 +139,6 @@ add_executable(distributed_planner
 	src/Fuzzy_Bin.cpp
 	src/Goal.cpp
 	src/Map_Node.cpp
-	src/Planner_Utils.cpp
 	src/Probability_Node.cpp
 	src/World.cpp)
 

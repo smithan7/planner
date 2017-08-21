@@ -16,18 +16,11 @@
 using namespace std;
 using namespace cv;
 
-Agent::Agent(ros::NodeHandle nHandle, std::string world_param_file){
-	ROS_WARN("Agent::Agent:: create new world loaded");
-	this->world = new World(world_param_file);
-	this->n_tasks =  this->world->get_n_nodes();
-
-	// set these in param file
-	this->index = index;
-	this->type = type;
-	this->travel_vel = travel_vel;
-	this->travel_step = travel_vel *  this->world->get_dt();
-	this->color = color;
-
+Agent::Agent(ros::NodeHandle nHandle, const std::string &agent_param_file){
+	ROS_INFO("Agent::Agent::initializing planner");
+	
+	// load from param file
+	this->init(agent_param_file);
 	// initialize classes
 	this->goal_node = new Goal();
 	this->planner = new Agent_Planning(this, world);
@@ -47,6 +40,7 @@ Agent::Agent(ros::NodeHandle nHandle, std::string world_param_file){
 	this->travelling = false;
 	this->waiting = false;
 	this->emergency_stopped = false;
+	this->planning = false;
 
 	this->status_time = ros::Time::now(); // when did I last publish a status report
 	this->status_interval = ros::Duration(1.0);
@@ -70,6 +64,40 @@ Agent::Agent(ros::NodeHandle nHandle, std::string world_param_file){
 	this->marker_publisher = nHandle.advertise<visualization_msgs::Marker>("/RVIZ", 10);
 }
 
+bool Agent::init( const std::string &agent_param_file){
+
+    cv::FileStorage fs(agent_param_file, cv::FileStorage::READ);
+    if (!fs.isOpened()){
+        ROS_ERROR("Agent::init::Failed to open %s", agent_param_file.c_str());
+        return false;
+    }
+	ROS_INFO("Agent::init::Opened: %s", agent_param_file.c_str());
+    
+	fs["index"] >> this->index;
+	fs["type"] >> this->type;
+	if(this->type == 0){
+		this->color = cv::Scalar(0,0,255);
+	}
+	else{
+		this->color = cv::Scalar(255,0,0);
+	}
+	fs["travel_vel"] >> this->travel_vel;
+	fs["pay_obstacle_cost"] >> this->pay_obstacle_costs;
+	fs["planning_method"] >> this->task_selection_method;
+	ROS_INFO("Dist Planner::Agent::Agent::task_selection method: %s", this->task_selection_method.c_str());
+	std::string world_param_file;
+	fs["world_param_file"] >> world_param_file;
+	this->world = new World();
+	if(!this->world->init(world_param_file)){
+		ROS_ERROR("Dist Planner::Agent::init::World failed to initialize");		
+		return false;
+	}
+	ROS_INFO("Dist Planner::Agent::init::World initialized");
+	this->n_tasks =  this->world->get_n_nodes();
+	this->travel_step = this->travel_vel *  this->world->get_dt();
+}
+
+
 Agent::~Agent(){
 	delete this->planner;
 	delete this->coordinator;
@@ -80,19 +108,21 @@ Agent::~Agent(){
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){	
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
-	this->World->get_prm_location(this->edge, this->edge_progress);
+	this->world->get_prm_location(this->loc, this->edge, this->edge_progress);
 	
 	locationInitialized = true;
 
 	if(ros::Time::now() - this->plot_time > this->plot_interval){
 		this->plot_time = ros::Time::now();
+		ROS_WARN("Agent::Dji_Bridge status callback: add plot");
 
-		this->utils.build_prm_plot();
+		/*this->utils.build_prm_plot();
 		Scalar blue = Scalar(255,0,0);
 		this->utils.add_agent_to_prm_plot( blue, this->path, this->loc);
 		Scalar orange = Scalar(0,165,255);
 		this->utils.add_agent_to_prm_plot( orange, this->path, this->goal);
 		this->utils.display_prm_plot();
+		*/	
 	}
 
 	if(ros::Time::now() - this->status_time > this->status_interval){
@@ -112,7 +142,6 @@ void Agent::act() {
 		else {
 			this->planner->plan(); // I am not at my goal, select new goal
 			this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
-			this->select_next_edge(); // plan the next edge
 			this->find_path_and_publish(); // on the right edge, move along edge
 		}
 	}
@@ -155,13 +184,14 @@ void Agent::find_path_and_publish(){
 			ROS_WARN("Agent::find path and publish::TODO: remove Fake Goal");
 			this->path.push_back(this->goal); // this needs to be ERASED for trials
         	if(this->find_path(this->path)){
-        		this->publish_travel_path(this->path);	
+        		this->publish_travel_path_to_costmap(this->path);
+				this->publish_plan();	
         	}
 		}
 	}
 }
 
-void Agent::publish_travel_path(const std::vector<Point2d> &path){
+void Agent::publish_travel_path_to_costmap(const std::vector<Point2d> &path){
 	// initialize msg
 	custom_messages::Costmap_Bridge_Travel_Path_MSG path_msg;
 	// for length of path
@@ -174,18 +204,29 @@ void Agent::publish_travel_path(const std::vector<Point2d> &path){
 	this->path_publisher.publish(path_msg);
 }
 
+void Agent::publish_plan(){
+	custom_messages::Planner_Update_MSG msg;
+	msg.index = this->goal_node->get_index();
+	ROS_WARN("Agent::publish_plan::assuming greedy selection");	
+	msg.probability = 1.0;
+	msg.time = this->goal_node->get_completion_time();
+}
+
+
 bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 	ROS_WARN("Agent::find_path::TODO complete");
 	// ensure starting fresh
 	wp_path.clear();
-
-	
-
 	return true;
 }
 
 void Agent::publish_Agent_Status(){
 	custom_messages::Planner_Status_MSG msg;
+	for(int i=0; i<this->world->get_n_nodes(); i++){
+		if(!this->world->get_nodes()[i]->is_active()){
+			msg.completed_tasks.push_back(i);
+		}
+	}
 	msg.longitude = this->loc.x;
 	msg.latitude = this->loc.y;
 	msg.goal_longitude = this->goal.x;
@@ -198,6 +239,13 @@ void Agent::publish_Agent_Status(){
 	this->status_publisher.publish(msg);
 }
 
+void Agent::planner_status_callback( const custom_messages::Planner_Status_MSG& msg ){
+	for(int i=0; i<msg.completed_tasks.size(); i++){ // make sure all tasks are deactivated7
+		if(this->world->get_nodes()[msg.completed_tasks[i]]->is_active()){
+			this->world->get_nodes()[msg.completed_tasks[i]]->deactivate();
+		}
+	}
+}
 
 bool Agent::at_node(int node) {
 	ROS_WARN("Agent::at_node::TODO make distance based");

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<index>0</index>
+<type>0</type>
+<travel_vel>5.0</travel_vel>
+<pay_obstacle_cost>1</pay_obstacle_cost>
+<planning_method>"impact_completion_value"</planning_method>
+<world_param_file>/home/nvidia/catkin_ws/src/distributed_planner/hardware_world.xml</world_param_file>
+</opencv_storage>

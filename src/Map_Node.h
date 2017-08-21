@@ -17,7 +17,7 @@ class World;
 
 class Map_Node{
 public:
-	Map_Node(double x, double y, int index, double p_active, int task_type, std::vector<double> agent_work, cv::Scalar color, World* world);
+	Map_Node(const double &x, const double &y, const int &index, const int &task_type, const std::vector<double> &work, const cv::Scalar &color, World* world);
 	bool is_active() { return this->active; }; // is the task active
 	double get_reward_at_time(double time); // get the reward at time
 	double get_acted_upon(Agent* agent); // act for one time step, are there agents working on me, should I deactivate 
@@ -30,14 +30,13 @@ public:
 	double get_y() { return y; };
 	cv::Point2d get_loc() { return loc; }; // get  node location
 	bool get_nbr_i(const int &index, int &nbr_index);
-	bool get_nbr_distance(const int &index, double &nbr_dist);
-	bool get_nbr_obstacle_cost(const int& index, double &nbr_cost);
+	bool get_nbr_free_distance(const int &index, double &nbr_dist);
+	bool get_nbr_obstacle_distance(const int& index, double &nbr_cost);
 	int get_n_nbrs() { return n_nbrs; };
 
 	double get_time_to_complete(Agent* agent, World* world);
 	int get_index() { return this->index; };
-	void set_nbr_obstacle_cost(const int &ni, const double &obs_cost);
-	void add_nbr(int nbr, double dist);
+	void add_nbr(const int &nbr, const double &free_dist, const double &obs_dist);
 
 private:
 	double x;
@@ -49,8 +48,8 @@ private:
 	cv::Scalar color;
 	int n_nbrs;
 	std::vector<int> nbrs;
-	std::vector<double> nbr_distances;
-	std::vector<double> nbr_obstacle_costs;
+	std::vector<double> nbr_free_distances;
+	std::vector<double> nbr_obstacle_distances;
 
 	// number of types of tasks
 	int n_task_types;

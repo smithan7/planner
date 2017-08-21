@@ -62,12 +62,16 @@ class World;
 class Agent{
 public:
 
-	Agent(ros::NodeHandle nh, std::string world_param_file);//, std::string param_file);
+	Agent(ros::NodeHandle nh, const std::string &agent_param_file);
+	bool init(const std::string &agent_param_file);
 	~Agent();
 
 	// take in other agents' updates and include them
 	ros::Subscriber planner_update_subscriber;
 	void planner_update_callback( const custom_messages::Planner_Update_MSG& updates );
+
+	ros::Subscriber planner_status_subscriber;
+	void planner_status_callback( const custom_messages::Planner_Status_MSG& msg);
 
 	// proivde the rest of the team with my updates
 	ros::Publisher planner_update_publisher;
@@ -85,6 +89,10 @@ public:
 	// publish wp path to Costmap Bridge
 	ros::Publisher path_publisher;
 	void publish_travel_path();
+
+	// publish plan to rest of team
+	ros::Publisher plan_publisher;
+	void publish_plan(); // share plan with the rest of my team
 
 
 	// publish to the planner and dji_bridge
@@ -126,7 +134,7 @@ public:
 	int get_type() { return this->type; };
 	double get_travel_vel() { return this->travel_vel; };
 	double get_travel_step() { return this->travel_step; };
-
+	bool get_pay_obstacle_cost() { return this->pay_obstacle_costs; };
 	cv::Scalar get_color() { return this->color; };
 	cv::Point get_edge() { return this->edge; };
 	std::string get_task_selection_method() { return this->task_selection_method; };
@@ -164,6 +172,7 @@ private:
 	int type; // what type of agent am I?
 	double travel_vel; // how fast can I move?
 	double travel_step; // how far do I move in one time step
+	bool pay_obstacle_costs; // do I pay obstacle costs
 	cv::Scalar color; // what color am I plotted?
 	int n_tasks; // how many tasks are there
 
@@ -173,13 +182,9 @@ private:
 	
 	// working and planning
 	void work_on_task(); // work on the task I am at
-	
-	// moving and path planning 
-	void move_along_edge(); // move along the current edge
-	void select_next_edge(); // have a goal, select next edge to get to goal
 
 	void find_path_and_publish(); // find path to goal and publish it to costmap_bridge
-	void publish_travel_path(const std::vector<Point2d> &path);
+	void publish_travel_path_to_costmap(const std::vector<Point2d> &path);
 	bool find_path( std::vector<cv::Point2d> &wp_path);
 };
 

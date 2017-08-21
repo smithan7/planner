@@ -146,30 +146,24 @@ double Map_Node::get_reward_at_time(double time) {
 
 Map_Node::~Map_Node(){}
 
-void Map_Node::set_nbr_obstacle_cost(const int &ni, const double &obs_cost) {
-	if (ni < this->n_nbrs) {
-		this->nbr_obstacle_costs[ni] = obs_cost;
-	}
-}
-
-void Map_Node::add_nbr(int nbr, double dist) {
+void Map_Node::add_nbr(const int &nbr, const double &free_dist, const double &obs_dist) {
 	this->nbrs.push_back(nbr);
-	this->nbr_distances.push_back(dist);
+	this->nbr_free_distances.push_back(free_dist);
+	this->nbr_obstacle_distances.push_back(obs_dist);
 	this->n_nbrs++;
-	this->nbr_obstacle_costs.push_back(0.0);
 }
 
-bool Map_Node::get_nbr_obstacle_cost(const int &index, double &nbr_cost) {
+bool Map_Node::get_nbr_obstacle_distance(const int &index, double &nbr_cost) {
 	if (index < this->n_nbrs) {
-		nbr_cost = this->nbr_obstacle_costs[index];
+		nbr_cost = this->nbr_obstacle_distances[index];
 		return true;
 	}
 	return false;
 }
 
-bool Map_Node::get_nbr_distance(const int &index, double &nbr_dist) {
+bool Map_Node::get_nbr_free_distance(const int &index, double &nbr_dist) {
 	if (index < this->n_nbrs) {
-		nbr_dist = this->nbr_distances[index];
+		nbr_dist = this->nbr_free_distances[index];
 		return true;
 	}
 	return false;

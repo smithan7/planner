@@ -20,9 +20,8 @@ class Task;
 
 class World{
 public:
-	World( const std::string &param_file);
-	//World(const int &param_file, const bool &display_plot, const std::vector<cv::String> &task_selection_method, const cv::String &img_name);
-	// doing everything
+	World();	
+	bool init(const std::string &param_file);
 	double get_team_probability_at_time_except(const double & time, const int & task, const int & except_agent);
 	~World();
 
@@ -41,7 +40,7 @@ public:
 	bool a_star(const int & start, const int & goal, std::vector<int>& path, double & length);
 	double dist2d(const double & x1, const double & x2, const double & y1, const double & y2);
 	bool dist_between_nodes(const int & n1, const int & n2, double & d);
-	void display_world(const int & ms);
+	//void display_world(const int & ms);
 	bool get_index(const std::vector<int>& vals, const int & key, int & index);
 	bool get_mindex(const std::vector<double> &vals, int &mindex, double &minval);
 	bool get_travel_time(const int & s, const int & g, const double & step_dist, double & time);
@@ -59,6 +58,10 @@ public:
 	double get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2);
 
 private:
+
+	cv::Point2d NW_Corner, SE_Corner;
+	std::vector<double> agent_work;
+
 	double c_time, dt, end_time;
 
 	bool show_display;
@@ -73,11 +76,8 @@ private:
 	std::string task_selection_method;
 	
 	// initialize everything
-	int param_file_index;
-	char* param_file;
-	void load_params();
-	void initialize_nodes_and_tasks();
-	void initialize_PRM();
+	//void initialize_PRM();
+	bool on_map(const cv::Point2d &loc);
 
 	// get cost of each time step
 	void score_and_record_all();
