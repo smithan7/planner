@@ -49,6 +49,7 @@ public:
 	bool valid_node(const int & n);
 	bool valid_agent(const int a);
 
+
 	// brought over from ROS
 	bool get_prm_location(const cv::Point2d&loc, cv::Point &edge, double &edge_progress);
 	double to_radians(const double &deg);
@@ -58,10 +59,6 @@ public:
 	double get_local_heading(const cv::Point2d &l1, const cv::Point2d &l2);
 
 private:
-
-	cv::Point2d NW_Corner, SE_Corner;
-	std::vector<double> agent_work;
-
 	double c_time, dt, end_time;
 
 	bool show_display;

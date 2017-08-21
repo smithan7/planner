@@ -222,11 +222,14 @@ bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 
 void Agent::publish_Agent_Status(){
 	custom_messages::Planner_Status_MSG msg;
+<<<<<<< HEAD
 	for(int i=0; i<this->world->get_n_nodes(); i++){
 		if(!this->world->get_nodes()[i]->is_active()){
 			msg.completed_tasks.push_back(i);
 		}
 	}
+=======
+>>>>>>> 6c97866f7b60da99457c5b66d843a3df63bf554c
 	msg.longitude = this->loc.x;
 	msg.latitude = this->loc.y;
 	msg.goal_longitude = this->goal.x;
