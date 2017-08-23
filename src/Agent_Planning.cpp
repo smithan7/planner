@@ -12,8 +12,6 @@ Agent_Planning::Agent_Planning(Agent* agent, World* world_in){
 	this->owner = agent;
 	this->world = world_in;
 	this->task_selection_method = agent->get_task_selection_method();
-
-	this->set_goal(this->owner->get_edge().x);
 }
 
 

@@ -20,6 +20,15 @@ Agent_Coordinator::Agent_Coordinator(Agent* agent, int n_tasks) {
 	this->task_claim_time = agent->get_task_claim_time();
 }
 
+Agent_Coordinator::Agent_Coordinator(int n_tasks) {
+	this->owner = NULL;
+	this->n_tasks = n_tasks;
+	for (int i = 0; i < this->n_tasks; i++) {
+		Probability_Node* pn = new Probability_Node(i);
+		this->prob_actions.push_back(pn);
+	}
+}
+
 
 Agent_Coordinator::~Agent_Coordinator() {
 	for (int i = 0; i < this->n_tasks; i++) {
@@ -83,18 +92,15 @@ double Agent_Coordinator::get_reward_impact(int task_i, int agent_i, double comp
 	// need to know the expected time of arrival of all other agents arriving after me
 
 	Map_Node* task = world->get_nodes()[task_i];
-	Agent* agent = world->get_agents()[agent_i];
-
 	double my_reward = task->get_reward_at_time(completion_time);
 
 	// go through each agent's coordinator and check this task for claims AFTER my completion time.
 	Probability_Node shared_plan(task_i);
 	for (int a = 0; a < world->get_n_agents(); a++) {
 		if (agent_i != a) {
-			Agent_Coordinator* coord = world->get_agents()[a]->get_coordinator();
 			// get all active claims by each agent and add to the shared plan
 			std::vector<double> p, t;
-			if (coord->get_claims_after(task_i, 0.0, p, t)) {
+			if (world->get_agent_coords()[a]->get_claims_after(task_i, 0.0, p, t)) {
 				for (size_t i = 0; i < p.size(); i++) {
 					shared_plan.add_stop_to_shared_path(t[i], p[i]);
 				}
@@ -121,11 +127,10 @@ double Agent_Coordinator::get_reward_impact(int task_i, int agent_i, double comp
 }
 
 
-void Agent_Coordinator::add_stop_to_my_path(int task_index, double time, double prob){
+void Agent_Coordinator::add_stop_to_path(const int &task_index, const double &time, const double &prob){
 	if (task_index > this->prob_actions.size()) {
 		return;
 	}
-	
 	this->prob_actions[task_index]->add_stop_to_my_path(time, prob);
 };
 
@@ -143,7 +148,7 @@ bool Agent_Coordinator::advertise_task_claim(World* world) {
 
 	}
 	else {
-		std::cerr << "Agent_Coordinator::advertise_task_claim: no method specified" << std::endl;
+		ROS_ERROR("Agent_Coordinator::advertise_task_claim: no method specified");
 	}
 
 	if (this->task_claim_time.compare("arrival_time") == 0) {
@@ -166,7 +171,7 @@ bool Agent_Coordinator::advertise_task_claim(World* world) {
 		return true;
 	}
 	else {
-		std::cerr << "Agent_Coordinator::coordinate_task_selection: No method specified" << std::endl;
+		ROS_ERROR("Agent_Coordinator::coordinate_task_selection: No method specified");
 		return false;
 	}
 }

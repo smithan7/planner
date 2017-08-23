@@ -17,16 +17,19 @@
 class Map_Node;
 class Agent;
 class Task;
+class Agent_Coordinator;
 
 class World{
 public:
 	World();	
 	bool init(const std::string &param_file);
 	double get_team_probability_at_time_except(const double & time, const int & task, const int & except_agent);
+	void add_stop_to_agents_path(const int &agent_index, const int &task_index, const double &probability, const double &time);
 	~World();
 
 	// accessing private vars
-	std::vector<Agent*> get_agents() { return this->agents; };
+	//std::vector<Agent*> get_agents() { return this->agents; };
+	std::vector<Agent_Coordinator*> get_agent_coords() { return this->agent_coords; };
 	std::vector<Map_Node*> get_nodes() { return this->nodes; };
 	int get_n_nodes() { return this->n_nodes; };
 	int get_n_agents() { return this->n_agents; };
@@ -72,7 +75,8 @@ private:
 	std::vector<std::vector<double> > node_transitions;
 
 	std::vector<Map_Node*> nodes;
-	std::vector<Agent*> agents;
+	//std::vector<Agent*> agents;
+	std::vector<Agent_Coordinator*> agent_coords;
 	std::string task_selection_method;
 	
 	// initialize everything

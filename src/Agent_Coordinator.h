@@ -12,6 +12,7 @@ class Agent_Coordinator
 {
 public:
 	Agent_Coordinator(Agent* agent, int n_tasks);
+	Agent_Coordinator(int n_tasks);
 	~Agent_Coordinator();
 
 	Agent* owner;
@@ -21,7 +22,7 @@ public:
 	bool get_claims_after(int task, double query_time, std::vector<double>& prob, std::vector<double>& times);
 	bool advertise_task_claim(World* world);
 	void reset_prob_actions(); // reset my probable actions
-	void add_stop_to_my_path(int task_index, double time, double prob);
+	void add_stop_to_path(const int &task_index, const double &time, const double &prob);
 	double get_reward_impact(int task, int agent, double completion_time, World* world);
 
 private:

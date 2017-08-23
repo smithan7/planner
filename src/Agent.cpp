@@ -24,10 +24,7 @@ Agent::Agent(ros::NodeHandle nHandle, const std::string &agent_param_file){
 	// initialize classes
 	this->goal_node = new Goal();
 	this->planner = new Agent_Planning(this, world);
-	this->coordinator = new Agent_Coordinator(this, n_tasks);
-
-
-	ROS_INFO("In");
+	this->coordinator = new Agent_Coordinator(this, this->n_tasks);
 
 	// initialize local locs
 	this->loc = Point2d(-1.0, -1.0);
@@ -50,10 +47,13 @@ Agent::Agent(ros::NodeHandle nHandle, const std::string &agent_param_file){
 	this->plot_interval = ros::Duration(1.0); // plot at 1 Hz
 
 	/////////////////////// Subscribers /////////////////////////////
-	// quad status callback
+	// quad status callback, get position
 	this->quad_status_subscriber = nHandle.subscribe("/dji_bridge_status", 0, &Agent::DJI_Bridge_status_callback, this);
-	// costmap_bridge status callback
+	// costmap_bridge status callback, currently does nothing
 	this->costmap_status_subscriber = nHandle.subscribe("/costmap_bridge_status", 0, &Agent::Costmap_Bridge_status_callback, this);
+
+	// har everyone else's plans
+	this->planner_update_subscriber = nHandle.subscribe("/agent_plans", 10, &Agent::planner_update_callback, this);
 
 	/////////////////////// Publishers //////////////////////////////
 	// tell the Costmap Bridge where I am going
@@ -83,7 +83,9 @@ bool Agent::init( const std::string &agent_param_file){
 	}
 	fs["travel_vel"] >> this->travel_vel;
 	fs["pay_obstacle_cost"] >> this->pay_obstacle_costs;
-	fs["planning_method"] >> this->task_selection_method;
+	fs["task_selection_method"] >> this->task_selection_method;
+	fs["task_claim_method"] >> this->task_claim_method;
+	fs["task_claim_time"] >> this->task_claim_time;
 	ROS_INFO("Dist Planner::Agent::Agent::task_selection method: %s", this->task_selection_method.c_str());
 	std::string world_param_file;
 	fs["world_param_file"] >> world_param_file;
@@ -102,6 +104,14 @@ Agent::~Agent(){
 	delete this->planner;
 	delete this->coordinator;
 	delete this->goal_node;
+}
+
+void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& msg ){
+	ROS_WARN("DIST PLANNER::Agent::planner update callback::TODO uncoment");	
+	//if(this->index != msg.agent_index){
+		// make sure it isn't me
+		//this->world->add_stop_to_agents_path(msg.agent_index, msg.node_index, msg.probability, msg.time);
+	//}
 }
 
 

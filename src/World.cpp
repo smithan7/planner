@@ -32,10 +32,10 @@ bool World::init(const std::string &param_file){
 	*/
     cv::FileStorage fs(param_file, cv::FileStorage::READ);
     if (!fs.isOpened()){
-        ROS_ERROR("World::World::Failed to open %s", param_file.c_str());
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", param_file.c_str());
         return false;
     }
-	ROS_INFO("World::World::Opened: %s", param_file.c_str());
+	ROS_INFO("Dist planner::World::init::Opened: %s", param_file.c_str());
     
 	fs["nw_longitude"] >> this->NW_Corner.x;
 	fs["nw_latitude"] >> this->NW_Corner.y;
@@ -43,10 +43,18 @@ bool World::init(const std::string &param_file){
 	fs["se_latitude"] >> this->SE_Corner.y;
 	this->agent_work = std::vector<double>(0.0, 1.0);
 
+	// set up other agents
+	fs["num_agents"] >> this->n_agents;
+	for(int i=0; i<this->n_agents; i++){
+		Agent_Coordinator* a = new Agent_Coordinator(this->n_nodes);
+		this->agent_coords.push_back(a);	
+	}
+	ROS_INFO("Dist planner::World::init::created %i agent coordinators", this->n_agents);
+	
+
+	// set map nodes
 	cv::Scalar red(0,0,255);
 	cv::Scalar blue(255,0,0);
-
-
     fs["n_nodes"] >> this->n_nodes;
 	char* node_num;
 	for(int i=0; i<this->n_nodes; i++){
@@ -80,7 +88,9 @@ bool World::init(const std::string &param_file){
     std::string img_name;
 	fs["map_img"] >> img_name;
 	fs.release();
-	ROS_INFO("Dist_Planner::World::initialize_costmap::origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
+	
+	ROS_INFO("Dist planner::World::init::created PRM with %i nodes and %i edges", this->n_nodes, n_edges);
+	ROS_INFO("Dist_Planner::World::init::PRM origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
 
 	// initialize cost tracking
 	this->cumulative_open_reward = 0.0;
@@ -90,6 +100,13 @@ bool World::init(const std::string &param_file){
 	//this->display_world(1);
 	return true;
 }
+
+void World::add_stop_to_agents_path(const int &agent_index, const int &task_index, const double &probability, const double &time){
+	ROS_WARN("Dist Planner::World::add stop to agent path: TODO: only using a single bid");
+	this->agent_coords[agent_index]->reset_prob_actions();
+	this->agent_coords[agent_index]->add_stop_to_path(task_index, time, probability);
+}
+
 
 bool World::on_map(const cv::Point2d &loc){
 	ROS_WARN("World::on_map::TODO check if map bounding is right");
@@ -194,9 +211,8 @@ double World::get_team_probability_at_time_except(const double &time, const int 
 	double p_task_I_time = 0.0;
 	for (int a = 0; a < this->n_agents; a++) {
 		if (a != except_agent) { // ignore the specified agent
-			Agent_Coordinator* coord = this->agents[a]->get_coordinator(); // get coordinator for readability
-			double p_t = coord->get_prob_actions()[task]->get_probability_at_time(time); // get probable actions of agent a
-			p_task_I_time = coord->get_prob_actions()[task]->probability_update_inclusive(p_task_I_time, p_t); // add to cumulative actions of team
+			double p_t = this->agent_coords[a]->get_prob_actions()[task]->get_probability_at_time(time); // get probable actions of agent a
+			p_task_I_time = this->agent_coords[a]->get_prob_actions()[task]->probability_update_inclusive(p_task_I_time, p_t); // add to cumulative actions of team
 		}
 	}
 	return p_task_I_time;
