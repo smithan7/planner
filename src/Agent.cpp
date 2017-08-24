@@ -81,7 +81,7 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 bool Agent::load_agent_params(const int &agent_index){
 	this->index = agent_index;
 	char agent_file[200];
-	sprintf(agent_file, "/home/andy/catkin_ws/src/planner/params/agent%i_params.xml", agent_index);
+	sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
     cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
     if (!f_agent.isOpened()){
         ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
