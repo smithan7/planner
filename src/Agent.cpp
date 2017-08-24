@@ -16,11 +16,25 @@
 using namespace std;
 using namespace cv;
 
-Agent::Agent(ros::NodeHandle nHandle, const std::string &agent_param_file){
+Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const int &test_scenario_number, const int &agent_index){
 	ROS_INFO("Agent::Agent::initializing planner");
-	
+	ROS_INFO("     test_environment_number: %i", test_environment_number);
+	ROS_INFO("     test_scenario_number: %i", test_scenario_number);
+	ROS_INFO("     agent_index: %i", agent_index);
+		
 	// load from param file
-	this->init(agent_param_file);
+	if(!this->load_agent_params(agent_index)){
+		ROS_ERROR("Dist Planner::Agent::init::could not initialize agent");
+	}
+
+	this->world = new World();
+	if(!this->world->init(test_environment_number, test_scenario_number)){
+		ROS_ERROR("Dist Planner::Agent::init::World failed to initialize");		
+	}
+	ROS_INFO("Dist Planner::Agent::init::World initialized");
+	this->n_tasks =  this->world->get_n_nodes();
+	this->travel_step = this->travel_vel *  this->world->get_dt();
+
 	// initialize classes
 	this->goal_node = new Goal();
 	this->planner = new Agent_Planning(this, world);
@@ -64,39 +78,27 @@ Agent::Agent(ros::NodeHandle nHandle, const std::string &agent_param_file){
 	this->marker_publisher = nHandle.advertise<visualization_msgs::Marker>("/RVIZ", 10);
 }
 
-bool Agent::init( const std::string &agent_param_file){
-
-    cv::FileStorage fs(agent_param_file, cv::FileStorage::READ);
-    if (!fs.isOpened()){
-        ROS_ERROR("Agent::init::Failed to open %s", agent_param_file.c_str());
+bool Agent::load_agent_params(const int &agent_index){
+	this->index = agent_index;
+	char agent_file[200];
+	sprintf(agent_file, "/home/andy/catkin_ws/src/planner/params/agent%i_params.xml", agent_index);
+    cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
+    if (!f_agent.isOpened()){
+        ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
         return false;
     }
-	ROS_INFO("Agent::init::Opened: %s", agent_param_file.c_str());
+	ROS_INFO("Dist planner::Agent::init::Opened: %s", agent_file);
     
-	fs["index"] >> this->index;
-	fs["type"] >> this->type;
-	if(this->type == 0){
-		this->color = cv::Scalar(0,0,255);
-	}
-	else{
-		this->color = cv::Scalar(255,0,0);
-	}
-	fs["travel_vel"] >> this->travel_vel;
-	fs["pay_obstacle_cost"] >> this->pay_obstacle_costs;
-	fs["task_selection_method"] >> this->task_selection_method;
-	fs["task_claim_method"] >> this->task_claim_method;
-	fs["task_claim_time"] >> this->task_claim_time;
-	ROS_INFO("Dist Planner::Agent::Agent::task_selection method: %s", this->task_selection_method.c_str());
-	std::string world_param_file;
-	fs["world_param_file"] >> world_param_file;
-	this->world = new World();
-	if(!this->world->init(world_param_file)){
-		ROS_ERROR("Dist Planner::Agent::init::World failed to initialize");		
-		return false;
-	}
-	ROS_INFO("Dist Planner::Agent::init::World initialized");
-	this->n_tasks =  this->world->get_n_nodes();
-	this->travel_step = this->travel_vel *  this->world->get_dt();
+	f_agent["type"] >> this->type;
+	this->color = cv::Scalar(0,0,255);
+	
+	f_agent["travel_vel"] >> this->travel_vel;
+	f_agent["pay_obstacle_cost"] >> this->pay_obstacle_costs;
+	f_agent["task_selection_method"] >> this->task_selection_method;
+	f_agent["task_claim_method"] >> this->task_claim_method;
+	f_agent["task_claim_time"] >> this->task_claim_time;
+	f_agent.release();
+	return true;
 }
 
 
@@ -216,7 +218,8 @@ void Agent::publish_travel_path_to_costmap(const std::vector<Point2d> &path){
 
 void Agent::publish_plan(){
 	custom_messages::Planner_Update_MSG msg;
-	msg.index = this->goal_node->get_index();
+	msg.node_index = this->goal_node->get_index();
+	msg.agent_index = this->index;
 	ROS_WARN("Agent::publish_plan::assuming greedy selection");	
 	msg.probability = 1.0;
 	msg.time = this->goal_node->get_completion_time();

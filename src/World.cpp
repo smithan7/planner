@@ -12,93 +12,190 @@
 #include <iostream>
 #include <fstream>
  
-World::World(){}
+World::World(){
+	// initialize cost tracking
+	this->cumulative_open_reward = 0.0;
 
-bool World::init(const std::string &param_file){
-	/*
-	ROS_INFO("writing param file");
-	std::string filename = "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_params.xml";
-    cv::FileStorage fr(filename, cv::FileStorage::WRITE);
-    fr << "cells_width" << 1000;
-    fr << "cells_height" << 1000;
-	fr << "nw_longitude" <<-123.251004;
-	fr << "nw_latitude" << 44.539847;
-	fr << "se_longitude" << -123.247446;
-	fr << "se_latitude" << 44.538552;
-    fr << "obstacle_image" << "/home/nvidia/catkin_ws/src/costmap_bridge/hardware_obstacles.png";
-    fr << "pay_obstacle_costs" << 1;
-    fr.release();
-    ROS_INFO("wrote param file");
-	*/
-    cv::FileStorage fs(param_file, cv::FileStorage::READ);
-    if (!fs.isOpened()){
-        ROS_ERROR("Dist planner::World::init::Failed to open %s", param_file.c_str());
+}
+
+bool World::init(const int &test_environment_number, const int &test_scenario_number){
+
+	// load general information
+	if(!this->load_test_scenario(test_scenario_number)){	
+		ROS_ERROR("Dist Planner::World::init::could not load test conditions");
+		return false;	
+	}
+
+	// initialize PRM and tasks	
+	if(!this->load_PRM_vertices(test_environment_number)){
+		ROS_ERROR("Dist Planner::World::init::could not load vertices");
+		return false;
+	}
+	if(!this->load_PRM_edges(test_environment_number)){
+		ROS_ERROR("Dist Planner::World::init::could not load edges");
+		return false;
+	}
+	if(!this->load_human_tasks(test_environment_number)){
+		ROS_ERROR("Dist Planner::World::init::could not load human tasks");
+		return false;	
+	}
+	if(!this->load_robot_tasks(test_environment_number)){
+		ROS_ERROR("Dist Planner::World::init::could not load robot tasks");
+		return false;	
+	}
+
+	ROS_INFO("Dist planner::World::init::created PRM with %i nodes and %i edges", this->n_nodes, this->n_edges);
+	ROS_INFO("Dist_Planner::World::init::PRM origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
+	ROS_INFO("Dist_Planner::World::init::Map Size: %0.2f / %0.2f", this->map_size_meters.x, this->map_size_meters.y);
+	ROS_INFO("Dist_Planner::World::init::%i human and %i robot tasks", this->n_human_tasks, this->n_robot_tasks);
+
+	return true;
+}
+
+bool World::load_test_scenario(const int &test_scenario_number){
+	char sc_file[200];
+	sprintf(sc_file, "/home/andy/catkin_ws/src/planner/params/test_scenario%i.xml", test_scenario_number);
+    cv::FileStorage f_scenario(sc_file, cv::FileStorage::READ);
+    if (!f_scenario.isOpened()){
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", sc_file);
         return false;
     }
-	ROS_INFO("Dist planner::World::init::Opened: %s", param_file.c_str());
+	ROS_INFO("Dist planner::World::init::Opened: %s", sc_file);
     
-	fs["nw_longitude"] >> this->NW_Corner.x;
-	fs["nw_latitude"] >> this->NW_Corner.y;
-	fs["se_longitude"] >> this->SE_Corner.x;
-	fs["se_latitude"] >> this->SE_Corner.y;
-	this->agent_work = std::vector<double>(0.0, 1.0);
-
-	// set up other agents
-	fs["num_agents"] >> this->n_agents;
+	f_scenario["num_agents"] >> this->n_agents;
 	for(int i=0; i<this->n_agents; i++){
 		Agent_Coordinator* a = new Agent_Coordinator(this->n_nodes);
 		this->agent_coords.push_back(a);	
 	}
+
+	f_scenario["n_agent_types"] >> this->n_agent_types;
+	f_scenario["agent_types"] >> this->agent_types;
+	f_scenario["n_task_types"] >> this->n_task_types;
+
+    char type_num[200];
+	for(int i=0; i<this->n_task_types; i++){
+		sprintf(type_num, "type%i", i);
+		std::vector<double> n_stuff;
+		f_scenario[type_num] >> n_stuff;
+		this->agent_work.push_back(n_stuff);
+	}
+	f_scenario.release();
+
 	ROS_INFO("Dist planner::World::init::created %i agent coordinators", this->n_agents);
-	
+    return true;
+}
+
+bool World::load_PRM_vertices(const int &test_environment_number){
+
+	char vert_file[200];
+	sprintf(vert_file, "/home/andy/catkin_ws/src/planner/params/hardware%i_vertices.xml", test_environment_number);
+    cv::FileStorage f_verts(vert_file, cv::FileStorage::READ);
+    if (!f_verts.isOpened()){
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", vert_file);
+        return false;
+    }
+	ROS_INFO("Dist planner::World::init::Opened: %s", vert_file);
+    
+	std::vector<double> corners;
+	f_verts["corners"] >> corners;
+	this->NW_Corner.x = corners[0];
+	this->NW_Corner.y = corners[1];
+	this->SE_Corner.x = corners[2];
+	this->SE_Corner.y = corners[3];
+
+	this->map_size_meters = this->global_to_local(this->SE_Corner);
 
 	// set map nodes
 	cv::Scalar red(0,0,255);
-	cv::Scalar blue(255,0,0);
-    fs["n_nodes"] >> this->n_nodes;
-	char* node_num;
+	std::vector<double> default_work = std::vector<double>(0.0, 0.0);
+
+    f_verts["n_vertices"] >> this->n_nodes;
+	char node_num[200];
 	for(int i=0; i<this->n_nodes; i++){
-		sprintf(node_num, "node_%i", i);
+		sprintf(node_num, "vertex%i_gps", i);
 		std::vector<double> n_stuff;
-		fs[node_num] >> n_stuff;
-		// n_stuff = [x,y,type];
-		cv::Scalar color;
-		if(int(n_stuff[2]) == 1){
-			color = red;
-		}
-		else{
-			color = blue;
-		}
-		Map_Node* m = new Map_Node(n_stuff[0], n_stuff[1], i, int(n_stuff[2]), this->agent_work, color, this);		
+		f_verts[node_num] >> n_stuff;
+		// n_stuff = [x,y];
+		Map_Node* m = new Map_Node(n_stuff[0], n_stuff[1], i, 0, default_work, red, this);		
 		this->nodes.push_back(m);
 	}
+	f_verts.release();
+	return true;
+}
 
-
-	int n_edges = 0;
-	fs["n_edges"] >> n_edges;
-	char* edge_num;
+bool World::load_PRM_edges(const int &test_environment_number){
+	char edge_file[200];
+	sprintf(edge_file, "/home/andy/catkin_ws/src/planner/params/hardware%i_edges.xml", test_environment_number);
+    cv::FileStorage f_edges(edge_file, cv::FileStorage::READ);
+    if (!f_edges.isOpened()){
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", edge_file);
+        return false;
+    }
+	ROS_INFO("Dist planner::World::init::Opened: %s", edge_file);
+    
+    int n_edges = 0;
+	f_edges["n_edges"] >> this->n_edges;
+	char edge_num[200];
 	for(int i=0; i<n_edges; i++){
 		sprintf(edge_num, "edge_%i", i);
 		std::vector<double> n_stuff;
-		fs[edge_num] >> n_stuff;
-		// n_stuff = [node i, node j, free dist, obstacle dist]
-		this->nodes[int(n_stuff[0])]->add_nbr(int(n_stuff[1]), n_stuff[2], n_stuff[3]);
-		this->nodes[int(n_stuff[1])]->add_nbr(int(n_stuff[0]), n_stuff[2], n_stuff[3]);
+		f_edges[edge_num] >> n_stuff;
+		// n_stuff = [node i, node j, obstacle dist, obstacle var, free distance]
+		this->nodes[int(n_stuff[0])]->add_nbr(int(n_stuff[1]), n_stuff[4], n_stuff[2]);
+		this->nodes[int(n_stuff[1])]->add_nbr(int(n_stuff[0]), n_stuff[4], n_stuff[2]);
 	}
-    std::string img_name;
-	fs["map_img"] >> img_name;
-	fs.release();
-	
-	ROS_INFO("Dist planner::World::init::created PRM with %i nodes and %i edges", this->n_nodes, n_edges);
-	ROS_INFO("Dist_Planner::World::init::PRM origin: %0.12f / %0.12f", this->NW_Corner.x, this->NW_Corner.y);
+    f_edges.release();
+    return true;
+} 
 
-	// initialize cost tracking
-	this->cumulative_open_reward = 0.0;
-	
-	// display world and pause
-	//this->last_plot_time = clock() / CLOCKS_PER_SEC;
-	//this->display_world(1);
-	return true;
+bool World::load_human_tasks(const int &test_environment_number){
+	char human_file[200];
+	sprintf(human_file, "/home/andy/catkin_ws/src/planner/params/hardware%i_human_tasks.xml", test_environment_number);
+    cv::FileStorage f_human(human_file, cv::FileStorage::READ);
+    if (!f_human.isOpened()){
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", human_file);
+        return false;
+    }
+	ROS_INFO("Dist planner::World::init::Opened: %s", human_file);
+    
+	f_human["n_tasks"] >> this->n_human_tasks;
+	char task_num[200];
+	for(int i=0; i<n_human_tasks; i++){
+		sprintf(task_num, "task%i", i);
+		int n_stuff;
+		f_human[task_num] >> n_stuff;
+		// n_stuff = [x], where node "x" is a human task]
+		this->nodes[n_stuff]->set_work(this->agent_work[0]);
+		this->nodes[n_stuff]->activate(this);
+	}
+    f_human.release();
+    return true;
+}
+
+bool World::load_robot_tasks(const int &test_environment_number){
+
+	char robot_file[200];
+	sprintf(robot_file, "/home/andy/catkin_ws/src/planner/params/hardware%i_uav_tasks.xml", test_environment_number);
+    cv::FileStorage f_robot(robot_file, cv::FileStorage::READ);
+    if (!f_robot.isOpened()){
+        ROS_ERROR("Dist planner::World::init::Failed to open %s", robot_file);
+        return false;
+    }
+	ROS_INFO("Dist planner::World::init::Opened: %s", robot_file);
+    
+
+    f_robot["n_tasks"] >> this->n_robot_tasks;
+	for(int i=0; i<n_robot_tasks; i++){
+		char task_num[200];
+		sprintf(task_num, "task%i", i);
+		int n_stuff;
+		f_robot[task_num] >> n_stuff;
+		// n_stuff = [x], where node "x" is a robot task]
+		this->nodes[i]->set_work(this->agent_work[1]);
+		this->nodes[i]->activate(this);
+	}
+    f_robot.release();
+    return true;
 }
 
 void World::add_stop_to_agents_path(const int &agent_index, const int &task_index, const double &probability, const double &time){
@@ -116,6 +213,16 @@ bool World::on_map(const cv::Point2d &loc){
 		}
 	}
 	return false;
+}
+
+cv::Point2d World::global_to_local(const cv::Point2d &loc){
+	double b = this->get_global_heading(this->NW_Corner, loc);
+	double d = this->get_global_distance(this->NW_Corner, loc);
+	cv::Point2d l;
+	l.x = -d*cos(b);
+	l.y = d*sin(b);
+
+	return l;
 }
 
 bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &edge_progress){

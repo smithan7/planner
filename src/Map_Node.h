@@ -37,12 +37,13 @@ public:
 	double get_time_to_complete(Agent* agent, World* world);
 	int get_index() { return this->index; };
 	void add_nbr(const int &nbr, const double &free_dist, const double &obs_dist);
+	void set_work(const std::vector<double> &work);
 
 private:
 	double x;
 	double y;
 	cv::Point2d loc, goal;
-	
+	cv::Point2d local_loc;
 
 	int index;
 	cv::Scalar color;

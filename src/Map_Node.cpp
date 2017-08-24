@@ -11,6 +11,7 @@ Map_Node::Map_Node(const double &x, const double &y, const int &index, const int
 	this->loc = cv::Point2d(x, y);
 	this->index = index;
 	this->color = color;
+	this->local_loc = world->global_to_local(this->loc);
 
 	// set up the tasks
 	this->n_reward_window_types = 4;
@@ -20,15 +21,8 @@ Map_Node::Map_Node(const double &x, const double &y, const int &index, const int
 	// range of rewards for tasks
 	this->initial_reward = 10.0;
 
-	// range of time available for rewards and used to set rewards
-	this->start_time = world->get_c_time();	
-	this->end_time = world->get_c_time() + world->get_end_time();
-
 	// how much work does it take to complete this task
 	this->remaining_work = 1.0;
-
-	// start setting it up
-	this->activate(world);
 }
 
 void Map_Node::deactivate() {
@@ -76,6 +70,9 @@ double Map_Node::get_time_to_complete(Agent* agent, World* world) {
 
 void Map_Node::activate(World* world) {
 	this->active = true;
+	// range of time available for rewards and used to set rewards
+	this->start_time = world->get_c_time();	
+	this->end_time = world->get_c_time() + world->get_end_time();
 	this->reward_window_type = 1; // linear reward
 	this->reward_slope = -this->initial_reward / (this->start_time - this->end_time);
 	this->reward_offset = this->initial_reward - this->reward_slope*this->start_time;	
@@ -151,6 +148,10 @@ void Map_Node::add_nbr(const int &nbr, const double &free_dist, const double &ob
 	this->nbr_free_distances.push_back(free_dist);
 	this->nbr_obstacle_distances.push_back(obs_dist);
 	this->n_nbrs++;
+}
+
+void Map_Node::set_work(const std::vector<double> &work){
+	this->agent_work = work;
 }
 
 bool Map_Node::get_nbr_obstacle_distance(const int &index, double &nbr_cost) {

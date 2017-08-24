@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<index>0</index>
+<type>1</type>
+<travel_vel>5.0</travel_vel>
+<pay_obstacle_cost>1</pay_obstacle_cost>
+<task_selection_method>"impact_completion_value"</task_selection_method>
+<task_claim_method>"greedy"</task_claim_method>
+<task_claim_time>"completion_time"</task_claim_time>
+</opencv_storage>

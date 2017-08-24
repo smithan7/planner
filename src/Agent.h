@@ -62,8 +62,7 @@ class World;
 class Agent{
 public:
 
-	Agent(ros::NodeHandle nh, const std::string &agent_param_file);
-	bool init(const std::string &agent_param_file);
+	Agent(ros::NodeHandle nh, const int &test_environment_number, const int &test_scenario_number, const int &agent_index);
 	~Agent();
 
 	// take in other agents' updates and include them
@@ -186,6 +185,8 @@ private:
 	void find_path_and_publish(); // find path to goal and publish it to costmap_bridge
 	void publish_travel_path_to_costmap(const std::vector<Point2d> &path);
 	bool find_path( std::vector<cv::Point2d> &wp_path);
+	bool load_agent_params(const int &agent_index);
+	
 };
 
 #endif /* SRC_Agent_H_ */

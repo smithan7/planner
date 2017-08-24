@@ -11,9 +11,11 @@ int main(int argc, char *argv[])
 	// initialization
 	ros::init(argc, argv, "Dist_Planner");
 	ros::NodeHandle nHandle("~");
-	std::string agent_param_file = "/home/nvidia/catkin_ws/src/distributed_planner/agent_params.xml";
+	int test_environment_number = 3;
+	int test_scenario_number = 0;
+	int agent_index = 0;
 	ROS_INFO("Distributed_Planner::initializing Planner");
-	Agent *agent = new Agent(nHandle, agent_param_file);
+	Agent *agent = new Agent(nHandle, test_environment_number, test_scenario_number, agent_index);
 
 	// return the control to ROS
 	ros::spin();

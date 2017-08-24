@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<num_agents>3</num_agents>
+<n_agent_types>2</n_agent_types>
+<agent_types>0 0 1</agent_types>
+<n_task_types>2</n_task_types>
+<type0>0.0 0.0</type0>
+<type1>0.0 99999999999999.9</type1>
+</opencv_storage>
