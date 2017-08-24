@@ -44,7 +44,8 @@ public:
 	bool a_star(const int & start, const int & goal, std::vector<int>& path, double & length);
 	double dist2d(const double & x1, const double & x2, const double & y1, const double & y2);
 	bool dist_between_nodes(const int & n1, const int & n2, double & d);
-	//void display_world(const int & ms);
+	void display_world(Agent* agent);
+	void show_prm_plot();
 	bool get_index(const std::vector<int>& vals, const int & key, int & index);
 	bool get_mindex(const std::vector<double> &vals, int &mindex, double &minval);
 	bool get_travel_time(const int & s, const int & g, const double & step_dist, double & time);
@@ -75,7 +76,6 @@ private:
 	int n_nodes, n_edges, n_agents, n_human_tasks, n_robot_tasks;
 	int n_agent_types, n_task_types;
 	std::vector<int> agent_types;
-	std::vector<std::vector<double> > node_transitions;
 
 	std::vector<Map_Node*> nodes;
 	//std::vector<Agent*> agents;

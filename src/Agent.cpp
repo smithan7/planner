@@ -93,6 +93,7 @@ bool Agent::load_agent_params(const int &agent_index){
 	this->color = cv::Scalar(0,0,255);
 	
 	f_agent["travel_vel"] >> this->travel_vel;
+	this->travel_step = 0.2 * this->travel_vel;
 	f_agent["pay_obstacle_cost"] >> this->pay_obstacle_costs;
 	f_agent["task_selection_method"] >> this->task_selection_method;
 	f_agent["task_claim_method"] >> this->task_claim_method;
@@ -109,63 +110,60 @@ Agent::~Agent(){
 }
 
 void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& msg ){
-	ROS_WARN("DIST PLANNER::Agent::planner update callback::TODO uncoment");	
-	//if(this->index != msg.agent_index){
+	if(this->index != msg.agent_index){
 		// make sure it isn't me
-		//this->world->add_stop_to_agents_path(msg.agent_index, msg.node_index, msg.probability, msg.time);
-	//}
+		this->world->add_stop_to_agents_path(msg.agent_index, msg.node_index, msg.probability, msg.time);
+	}
 }
 
 
-void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){	
+void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
 	this->world->get_prm_location(this->loc, this->edge, this->edge_progress);
-	
+	//ROS_INFO("loc: %.2f, %.2f", this->loc.x, this->loc.y);
+	//ROS_INFO("prm loc: edge: %i, %i", this->edge.x, this->edge.y);
+	//ROS_INFO("node loc: %.2f, %.2f", this->world->get_nodes()[this->edge.x]->get_local_loc().x, this->world->get_nodes()[this->edge.x]->get_local_loc().y);
 	locationInitialized = true;
 
 	if(ros::Time::now() - this->plot_time > this->plot_interval){
 		this->plot_time = ros::Time::now();
-		ROS_WARN("Agent::Dji_Bridge status callback: add plot");
-
-		/*this->utils.build_prm_plot();
-		Scalar blue = Scalar(255,0,0);
-		this->utils.add_agent_to_prm_plot( blue, this->path, this->loc);
-		Scalar orange = Scalar(0,165,255);
-		this->utils.add_agent_to_prm_plot( orange, this->path, this->goal);
-		this->utils.display_prm_plot();
-		*/	
+		this->world->display_world(this);
 	}
 
 	if(ros::Time::now() - this->status_time > this->status_interval){
 		this->status_time = ros::Time::now();
 		publish_Agent_Status();
 	}
+
+	ROS_WARN("going into act");
 	this->act();
+	ROS_INFO("out of act");
 }
 
 void Agent::act() {
+	//ROS_INFO("in act");
 	// am  I at a node?
 	if (this->at_node()) {
+		//ROS_INFO("at node");
 		// I am at a node, am I at my goal and is it active still?
 		if (this->at_goal() &&  this->world->get_nodes()[this->goal_node->get_index()]->is_active()) {
+			//ROS_INFO("at goal");
 			this->work_done +=  this->world->get_nodes()[this->goal_node->get_index()]->get_acted_upon(this); // work on my goal
 		}
 		else {
+			//ROS_INFO("not at goal, plan");
 			this->planner->plan(); // I am not at my goal, select new goal
+			//ROS_INFO("advertise");
 			this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
+			//ROS_INFO("path and publish");
 			this->find_path_and_publish(); // on the right edge, move along edge
 		}
 	}
 	else { // not at a node
+		//ROS_INFO("not at node, find path and publish");
 		this->find_path_and_publish(); // move along edge
 	}
-}
-
-void Agent::get_prm_location(const cv::Point2d &gps_in, cv::Point2i &edge_out, double &progress){
-	// go through the PRM and find the 2 nodes I am closest to. edge_out.x = closest, edge_out.y = 2nd closest. progress is (dist to x)/(dist between x and y)
-	ROS_WARN("Agent::get_prm_location::TODO write world get_prm_location");
-	this->world->get_prm_location(gps_in, edge_out, progress);
 }
 
 void Agent::Costmap_Bridge_status_callback( const custom_messages::Costmap_Bridge_Status_MSG& status_in){	
@@ -179,25 +177,18 @@ void Agent::find_path_and_publish(){
 
 		bool flag = false;
 		if( this->locationInitialized ){
-			if( this->costmapInitialized ){
-				flag = true;
-			}
-			else{
-				ROS_WARN("Agent::act::waiting on costmap callback");
-			}
+			flag = true;
 		}
 		else{
 			ROS_WARN("Agent::act::waiting on location callback");
 		}
 
         if( flag || true ){
-        	ROS_INFO("Agent::act::publishing path to costmap_bridge");
-			this->path.clear();
-			ROS_WARN("Agent::find path and publish::TODO: remove Fake Goal");
-			this->path.push_back(this->goal); // this needs to be ERASED for trials
+        	this->path.clear();
         	if(this->find_path(this->path)){
+				ROS_ERROR("path length: %i", int(this->path.size()));
         		this->publish_travel_path_to_costmap(this->path);
-				this->publish_plan();	
+				this->publish_plan();
         	}
 		}
 	}
@@ -227,10 +218,17 @@ void Agent::publish_plan(){
 
 
 bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
-	ROS_WARN("Agent::find_path::TODO complete");
 	// ensure starting fresh
-	wp_path.clear();
-	return true;
+	std::vector<int> path;
+	double length = 0;
+	if(this->world->a_star(this->edge.y, this->goal_node->get_index(), path, length)){
+		
+		for(size_t i=0; i<path.size(); i++){
+			wp_path.push_back(this->world->get_nodes()[path[i]]->get_local_loc());
+		}
+		return true;
+	}
+	return false;
 }
 
 void Agent::publish_Agent_Status(){
@@ -261,7 +259,6 @@ void Agent::planner_status_callback( const custom_messages::Planner_Status_MSG& 
 }
 
 bool Agent::at_node(int node) {
-	ROS_WARN("Agent::at_node::TODO make distance based");
 	if (this->edge_progress >= 0.9 && this->edge.y == node) {
 		return true;
 	}
@@ -274,7 +271,6 @@ bool Agent::at_node(int node) {
 }
 
 bool Agent::at_node() { // am I at a node, by edge progress?
-	ROS_WARN("Agent::at_node::TODO make distance based");
 	if (this->edge_progress <= 0.1 || this->edge_progress >= 0.9) {
 		return true;
 	}
@@ -284,7 +280,6 @@ bool Agent::at_node() { // am I at a node, by edge progress?
 }
 
 bool Agent::at_goal() { // am I at my goal node?
-	ROS_WARN("Agent::at_goal::TODO make distance based");
 	if (this->edge_progress >= 0.9 && this->edge.y == this->goal_node->get_index()) {
 		return true;
 	}

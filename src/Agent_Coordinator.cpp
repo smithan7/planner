@@ -44,7 +44,7 @@ void Agent_Coordinator::reset_prob_actions() {
 	}
 }
 
-bool Agent_Coordinator::get_advertised_task_claim_probability(int task_num, double query_time, double &prob_taken, World* world) {
+bool Agent_Coordinator::get_advertised_task_claim_probability(int task_num, double query_time, double &prob_taken, World* world) {;
 	if (task_num < 0 || task_num > this->n_tasks) {
 		return false;
 	}

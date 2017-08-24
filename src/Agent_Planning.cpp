@@ -18,6 +18,9 @@ Agent_Planning::Agent_Planning(Agent* agent, World* world_in){
 Agent_Planning::~Agent_Planning(){}
 
 void Agent_Planning::plan() {
+	ROS_INFO("into planner");
+	cerr << "task selection method: " << this->task_selection_method << endl;
+	//ROS_INF0("    task_selection_method: %s", this->task_selection_method.c_str() );
 	// randomly select nbr node
 	if (this->task_selection_method.compare("random_nbr") == 0) {
 		this->select_random_nbr();
@@ -80,6 +83,7 @@ void Agent_Planning::plan() {
 
 	// select task by impact reward at time of completion, impact_reward = reward(t_complete) - reward(t^{next closest agent}_complete - (travel_time + work_time)
 	else if (this->task_selection_method.compare("impact_completion_value") == 0) {
+		ROS_INFO("selecting task by impact completion value");
 		this->select_task_by_impact_completion_value();
 	}
 	// select task by MCTS using reward at time of completion
@@ -100,7 +104,7 @@ void Agent_Planning::plan() {
 	}
 	// method was not found, let user know
 	else {
-		std::cerr << "Agent_Planning::plan:: goal finding method unspecified" << std::endl;
+		ROS_ERROR("Agent_Planning::plan:: goal finding method unspecified");
 	}
 }
 
@@ -199,21 +203,35 @@ void Agent_Planning::select_task_by_impact_completion_value() {
 	double max_comp_reward = -double(INFINITY);
 	double max_comp_impact = -double(INFINITY);
 
+	if(this->owner->get_travel_step() <= 0.0){
+		this->owner->set_travel_step( this->owner->get_travel_vel() * world->get_dt());
+	}
+
+	//ROS_INFO("searching nodes");
 	for (int i = 0; i < this->world->get_n_nodes(); i++) {
 		if (world->get_nodes()[i]->is_active()) {
+			//ROS_INFO("node[%i] is active and at location %.2f, %.2f", i, world->get_nodes()[i]->get_local_loc().x, world->get_nodes()[i]->get_local_loc().y);
 			double e_dist = double(INFINITY);
 			// get euclidean dist first
 			if (world->dist_between_nodes(this->owner->get_edge().x, i, e_dist)) {
+				//ROS_INFO("dist: %.2f", e_dist);
 				double e_time = e_dist / this->owner->get_travel_step();
+				//ROS_INFO("e_time: %.2f", e_time);								
 				double w_time = this->world->get_nodes()[i]->get_time_to_complete(this->owner, this->world);
+				//ROS_INFO("w_time: %.2f", w_time);		
 				double e_reward = this->world->get_nodes()[i]->get_reward_at_time(world->get_c_time() + e_time + w_time);
+				//ROS_INFO("reward: %.2f", e_reward);
 				double e_value = e_reward - (e_time + w_time);
+				//ROS_INFO("value: %.2f", e_value);
+								
 				// is my euclidean travel time reward better?
 				if (e_value > max_comp_impact) {
+					//ROS_INFO("better than current best");
 					// I am euclidean reward better, check a star
 					std::vector<int> path;
 					double a_dist = double(INFINITY);
 					if (world->a_star(this->owner->get_edge().x, i, path, a_dist)) {
+						//ROS_ERROR("a_dist: %.2f", a_dist);
 						// am I a star better?
 						double arr_time = this->world->get_c_time() + a_dist / this->owner->get_travel_step();
 						double arr_reward = this->world->get_nodes()[i]->get_reward_at_time(arr_time);
@@ -221,35 +239,55 @@ void Agent_Planning::select_task_by_impact_completion_value() {
 						double comp_reward = this->world->get_nodes()[i]->get_reward_at_time(comp_time);
 						double comp_value = comp_reward - (a_dist / this->owner->get_travel_step() + w_time);
 						// is it still the best with A*?
+						//ROS_INFO("value: %.2f", comp_value);
+						//ROS_INFO("reward: %.2f", comp_reward);
+						//ROS_INFO("c_time: %.2f", world->get_c_time());
+						//ROS_INFO("travel_step: %.2f", this->owner->get_travel_step());
+						//ROS_INFO("travel_vel: %.2f", this->owner->get_travel_vel());
+								
+						//ROS_INFO("arr_time: %.2f", arr_time);
+						//ROS_INFO("comp_time: %.2f", comp_time);
 						if (comp_value > max_comp_impact) {
 							// is it taken by someone else?
+							//ROS_INFO("new comp best");
 							double prob_taken = 0.0;
 							if (my_coord->get_advertised_task_claim_probability(i, comp_time, prob_taken, this->world)) {
+								//ROS_INFO("prob taken: %.2f", prob_taken);
 								if (prob_taken == 0.0) {
+									//ROS_INFO("prob taken == 0");
 									double impact = my_coord->get_reward_impact(i, this->owner->get_index(), comp_time, this->world);
 									double impact_value = impact - (a_dist / this->owner->get_travel_step() + w_time);
-									if (impact_value > max_comp_impact) {}
-									// if not taken, then accept as possible goal
+									if (impact_value > max_comp_impact) {
+										// if not taken, then accept as possible goal
 
-									max_comp_impact = impact_value;
-									max_comp_reward = comp_reward;
-									max_arr_reward = arr_reward;
-									max_distance = a_dist;
-									max_index = i;
-									max_arrival_time = arr_time;
-									max_completion_time = comp_time;
+										max_comp_impact = impact_value;
+										max_comp_reward = comp_reward;
+										max_arr_reward = arr_reward;
+										max_distance = a_dist;
+										max_index = i;
+										max_arrival_time = arr_time;
+										max_completion_time = comp_time;
+										//ROS_INFO("set_goal[%i]", i);
+									}
+									//ROS_INFO("1");
 								}
-								else {
-									int a = i + 1;
-								}
+								//ROS_INFO("2");
 							}
+							//ROS_INFO("3");
 						}
+						//ROS_INFO("4");
 					}
+					//ROS_INFO("5");
 				}
+				//ROS_INFO("6");
 			}
+			//ROS_INFO("7");
 		}
+		//ROS_INFO("8, %i, %i", i, this->world->get_n_nodes());
 	}
+	//ROS_INFO("9");
 	if (max_index > -1) {
+		ROS_INFO("Found goal node");
 		std::vector<std::string> args;
 		std::vector<double> vals;
 		args.push_back("distance");
@@ -271,6 +309,7 @@ void Agent_Planning::select_task_by_impact_completion_value() {
 		vals.push_back(max_comp_reward);
 
 		this->set_goal(max_index, args, vals);
+		ROS_INFO("Goal Set");
 	}
 
 
@@ -302,7 +341,6 @@ void Agent_Planning::set_goal(const int &goal_index) {
 	}
 	else {
 		this->owner->get_goal()->set_distance(double(INFINITY));
-	
 		std::cerr << "Agent_Planning:set_goal: A* could not find path to node" << std::endl;
 	}
 	this->owner->get_goal()->set_current_time(world->get_c_time());

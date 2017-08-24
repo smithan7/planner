@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ros/ros.h>
 #include <vector>
 #include<iostream>
 #include<string> // for string class

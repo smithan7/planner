@@ -116,14 +116,13 @@ public:
 	/********************************************************************/
 	/*********************** Begin My Stuff *****************************/
 	/********************************************************************/
-	void get_prm_location(const cv::Point2d &gps_in, cv::Point2i &edge_out, double &progress);
 
 	bool at_node(int node);
 	void act();
 	
 	// access private variables
 	int get_index() { return this->index; };
-	cv::Point2d get_loc2d();
+	cv::Point2d get_loc2d() { return this->loc; };
 	int get_loc() { return this->edge.x; };
 
 	Goal* get_goal() { return this->goal_node; };
@@ -142,7 +141,7 @@ public:
 
 	double get_work_done() { return this->work_done; };
 	double get_travel_done() { return this->travel_done; };
-
+	void set_travel_step( const double &ts ) { this->travel_step = ts; };
 private:
 	// location in lat/lon
 	cv::Point2d loc, goal, published_goal;

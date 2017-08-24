@@ -12,11 +12,14 @@ Map_Node::Map_Node(const double &x, const double &y, const int &index, const int
 	this->index = index;
 	this->color = color;
 	this->local_loc = world->global_to_local(this->loc);
+	this->n_nbrs = 0;
 
 	// set up the tasks
 	this->n_reward_window_types = 4;
 	this->task_type = task_type;
-	this->agent_work = work;
+	this->agent_work.push_back(0.0);
+	this->agent_work.push_back(0.0);
+
 
 	// range of rewards for tasks
 	this->initial_reward = 10.0;
@@ -62,9 +65,14 @@ double Map_Node::get_acted_upon(Agent* agent) {
 }
 
 double Map_Node::get_time_to_complete(Agent* agent, World* world) {
+	//cerr << "in" << endl;
 	int agent_type = agent->get_type();
+	//cerr << "agent type " << agent_type << endl;
+	//cerr << "agent work.size " << this->agent_work.size() << endl;
 	double agent_work = this->agent_work[agent_type];
+	//cerr << "agent work " << agent_work << endl;
 	double time_to_complete = world->get_dt() * (this->remaining_work / agent_work);
+	//cerr << "time to complete: " << time_to_complete << endl;
 	return time_to_complete;
 }
 
@@ -112,7 +120,7 @@ void Map_Node::activate(World* world) {
 */
 }
 
-double Map_Node::get_reward_at_time(double time) {
+double Map_Node::get_reward_at_time(const double &time) {
 	if (!this->active || time > this->end_time || time < this->start_time) {
 		return 0.0;
 	}

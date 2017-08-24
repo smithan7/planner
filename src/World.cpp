@@ -15,16 +15,15 @@
 World::World(){
 	// initialize cost tracking
 	this->cumulative_open_reward = 0.0;
+	this->dt = 0.2;
 
 }
 
 bool World::init(const int &test_environment_number, const int &test_scenario_number){
 
-	// load general information
-	if(!this->load_test_scenario(test_scenario_number)){	
-		ROS_ERROR("Dist Planner::World::init::could not load test conditions");
-		return false;	
-	}
+	this->show_display = true;
+
+
 
 	// initialize PRM and tasks	
 	if(!this->load_PRM_vertices(test_environment_number)){
@@ -34,6 +33,11 @@ bool World::init(const int &test_environment_number, const int &test_scenario_nu
 	if(!this->load_PRM_edges(test_environment_number)){
 		ROS_ERROR("Dist Planner::World::init::could not load edges");
 		return false;
+	}
+	// load general information
+	if(!this->load_test_scenario(test_scenario_number)){	
+		ROS_ERROR("Dist Planner::World::init::could not load test conditions");
+		return false;	
 	}
 	if(!this->load_human_tasks(test_environment_number)){
 		ROS_ERROR("Dist Planner::World::init::could not load human tasks");
@@ -49,6 +53,9 @@ bool World::init(const int &test_environment_number, const int &test_scenario_nu
 	ROS_INFO("Dist_Planner::World::init::Map Size: %0.2f / %0.2f", this->map_size_meters.x, this->map_size_meters.y);
 	ROS_INFO("Dist_Planner::World::init::%i human and %i robot tasks", this->n_human_tasks, this->n_robot_tasks);
 
+
+	this->show_prm_plot();
+
 	return true;
 }
 
@@ -63,16 +70,19 @@ bool World::load_test_scenario(const int &test_scenario_number){
 	ROS_INFO("Dist planner::World::init::Opened: %s", sc_file);
     
 	f_scenario["num_agents"] >> this->n_agents;
+	ROS_INFO("Dist planner::World::init::n_agents: %i", this->n_agents);
 	for(int i=0; i<this->n_agents; i++){
 		Agent_Coordinator* a = new Agent_Coordinator(this->n_nodes);
 		this->agent_coords.push_back(a);	
 	}
+	ROS_INFO("Dist planner::World::init::created %i agent coordinators", this->n_agents);
 
 	f_scenario["n_agent_types"] >> this->n_agent_types;
 	f_scenario["agent_types"] >> this->agent_types;
 	f_scenario["n_task_types"] >> this->n_task_types;
 
     char type_num[200];
+	this->agent_work.clear();
 	for(int i=0; i<this->n_task_types; i++){
 		sprintf(type_num, "type%i", i);
 		std::vector<double> n_stuff;
@@ -81,7 +91,7 @@ bool World::load_test_scenario(const int &test_scenario_number){
 	}
 	f_scenario.release();
 
-	ROS_INFO("Dist planner::World::init::created %i agent coordinators", this->n_agents);
+	ROS_INFO("Dist planner::World::init::set work for %i task types", this->n_task_types);
     return true;
 }
 
@@ -103,7 +113,12 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 	this->SE_Corner.x = corners[2];
 	this->SE_Corner.y = corners[3];
 
+	this->map_size_meters.x = 0.0;
+	this->map_size_meters.y = 0.0;
 	this->map_size_meters = this->global_to_local(this->SE_Corner);
+	this->map_size_meters.x = abs(this->map_size_meters.x);
+	this->map_size_meters.y = abs(this->map_size_meters.y);
+	
 
 	// set map nodes
 	cv::Scalar red(0,0,255);
@@ -116,7 +131,7 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 		std::vector<double> n_stuff;
 		f_verts[node_num] >> n_stuff;
 		// n_stuff = [x,y];
-		Map_Node* m = new Map_Node(n_stuff[0], n_stuff[1], i, 0, default_work, red, this);		
+		Map_Node* m = new Map_Node(n_stuff[0], n_stuff[1], i, 0, default_work, red, this);	
 		this->nodes.push_back(m);
 	}
 	f_verts.release();
@@ -135,14 +150,17 @@ bool World::load_PRM_edges(const int &test_environment_number){
     
     int n_edges = 0;
 	f_edges["n_edges"] >> this->n_edges;
+	//ROS_INFO("n_edges: %i", this->n_edges);
 	char edge_num[200];
-	for(int i=0; i<n_edges; i++){
-		sprintf(edge_num, "edge_%i", i);
+	for(int i=0; i<this->n_edges; i++){
+		sprintf(edge_num, "edge%i", i);
 		std::vector<double> n_stuff;
 		f_edges[edge_num] >> n_stuff;
 		// n_stuff = [node i, node j, obstacle dist, obstacle var, free distance]
+		//ROS_INFO("node[%i], node[%i], obs dist[%.2f], free dist[%.2f]", int(n_stuff[0]), int(n_stuff[1]), int(n_stuff[2]), int(n_stuff[4]));
 		this->nodes[int(n_stuff[0])]->add_nbr(int(n_stuff[1]), n_stuff[4], n_stuff[2]);
 		this->nodes[int(n_stuff[1])]->add_nbr(int(n_stuff[0]), n_stuff[4], n_stuff[2]);
+		//ROS_INFO("nodes[%i].n_nbrs(): %i", int(n_stuff[0]), this->nodes[int(n_stuff[0])]->get_n_nbrs());
 	}
     f_edges.release();
     return true;
@@ -166,6 +184,7 @@ bool World::load_human_tasks(const int &test_environment_number){
 		f_human[task_num] >> n_stuff;
 		// n_stuff = [x], where node "x" is a human task]
 		this->nodes[n_stuff]->set_work(this->agent_work[0]);
+		this->nodes[n_stuff]->set_task_type(0);
 		this->nodes[n_stuff]->activate(this);
 	}
     f_human.release();
@@ -191,8 +210,9 @@ bool World::load_robot_tasks(const int &test_environment_number){
 		int n_stuff;
 		f_robot[task_num] >> n_stuff;
 		// n_stuff = [x], where node "x" is a robot task]
-		this->nodes[i]->set_work(this->agent_work[1]);
-		this->nodes[i]->activate(this);
+		this->nodes[n_stuff]->set_work(this->agent_work[1]);
+		this->nodes[n_stuff]->set_task_type(1);
+		this->nodes[n_stuff]->activate(this);
 	}
     f_robot.release();
     return true;
@@ -206,12 +226,19 @@ void World::add_stop_to_agents_path(const int &agent_index, const int &task_inde
 
 
 bool World::on_map(const cv::Point2d &loc){
-	ROS_WARN("World::on_map::TODO check if map bounding is right");
+	if(loc.x > 0.0  && loc.x < this->map_size_meters.x){
+		if(loc.y > 0.0 && loc.y < this->map_size_meters.y){
+			return true;
+		}
+	}
+	
+	/*	
 	if(loc.x > this->NW_Corner.x && loc.x < this->SE_Corner.x){
 		if(loc.y > this->NW_Corner.y && loc.y > this->SE_Corner.y){
 			return true;
 		}
 	}
+	*/
 	return false;
 }
 
@@ -236,7 +263,7 @@ bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &ed
 	int ind1 = -1;
 	int ind2 = -1;
 	for(int i=0; i<this->n_nodes; i++){
-		double d = this->get_local_euclidian_distance(loc, this->nodes[i]->get_loc());
+		double d = this->get_local_euclidian_distance(loc, this->nodes[i]->get_local_loc());
 		if(d < min1){
 			min2 = min1;
 			ind2 = ind1;
@@ -252,7 +279,7 @@ bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &ed
 	if(ind1 > -1 && ind2 > -1){
 		edge.x = ind1;
 		edge.y = ind2;
-		double dist = this->get_local_euclidian_distance(this->nodes[ind1]->get_loc(), this->nodes[ind2]->get_loc());
+		double dist = this->get_local_euclidian_distance(this->nodes[ind1]->get_local_loc(), this->nodes[ind2]->get_loc());
 		edge_progress = min1 / dist;
 		return true;
 	}
@@ -395,6 +422,7 @@ bool World::a_star(const int &start, const int &goal, std::vector<int> &path, do
 		closed_set.push_back(current);
 
 		int n_nbrs = this->nodes[current]->get_n_nbrs();
+
 		for (int ni = 0; ni < n_nbrs; ni++) {
 			int neighbor = -1;
 			if (this->nodes[current]->get_nbr_i(ni, neighbor)) {
@@ -430,7 +458,7 @@ bool World::dist_between_nodes(const int &n1, const int &n2, double &d) {
 	// am I a node?
 	if (n1 >= 0 && n1 < this->n_nodes && n2 >= 0 && n2 < this->n_nodes) {
 		// get distance between nodes
-		d = sqrt(pow(this->nodes[n1]->get_x() - this->nodes[n2]->get_x(), 2) + pow(this->nodes[n1]->get_y() - this->nodes[n2]->get_y(), 2));
+		d = sqrt(pow(this->nodes[n1]->get_local_loc().x - this->nodes[n2]->get_local_loc().x, 2) + pow(this->nodes[n1]->get_local_loc().y - this->nodes[n2]->get_local_loc().y, 2));
 		return true;
 	}
 	else {
@@ -466,8 +494,7 @@ bool World::get_index(const std::vector<int> &vals, const int &key, int &index) 
 	return false;
 }
 
-/*
-void World::display_world(const int &ms) {
+void World::show_prm_plot() {
 	if (!this->show_display) {
 		return;
 	}
@@ -480,58 +507,121 @@ void World::display_world(const int &ms) {
 	cv::Scalar black(0.0, 0.0, 0.0);
 	cv::Scalar gray(127.0, 127.0, 127.0);
 
-	cv::Mat temp = this->obstacle_mat.clone();
-	cv::Mat map = cv::Mat::zeros(cv::Size(int(this->map_width), int(this->map_height) + 100), CV_8UC3);
-	temp.copyTo(map(cv::Rect(0, 0, temp.cols, temp.rows)));
+	cv::Mat map = cv::Mat::zeros(cv::Size(int(this->map_size_meters.x*10), int(this->map_size_meters.y*10) + 100), CV_8UC3);
 
 	// draw active tasks
-	for (int i = 0; i < this->n_nodes; i++) {
+for (int i = 0; i < this->n_nodes; i++) {
 		if (this->nodes[i]->is_active()) {
+			cv::Point2d l = this->nodes[i]->get_local_loc();
+			l.x *= 10;
+			l.y *= 10;
+			if(this->nodes[i]->get_task_type() == 0){
+				cv::circle(map, l, 10, red, -1);
+			}
+			else{
+				cv::circle(map, l, 10, green, -1);
+			}
+		}
+		else{
 			double d = 15.0;
-			cv::Point2d l = this->nodes[i]->get_loc();
-			cv::Point2d tl = cv::Point2d(l.x - d, l.y + d);
-			cv::Point2d br = cv::Point2d(l.x + d, l.y - d);
-			cv::rectangle(map, cv::Rect(tl, br), this->nodes[i]->get_color(), -1);
+			cv::Point2d l = this->nodes[i]->get_local_loc();
+			l.x *= 10;
+			l.y *= 10;
+			cv::circle(map, l, 10, white, -1);
+		
 		}
 	}
 
-	// draw agent goals
-	for (int i = 0; i < this->n_agents; i++) {
-		cv::Point2d l = this->nodes[this->agents[i]->get_goal()->get_index()]->get_loc();
-		cv::circle(map, l, 8, this->agents[i]->get_color(), -1);
-		cv::circle(map, l, 4, black, -1);
-	}
 
-	// draw agents
-	for (int i = 0; i < this->n_agents; i++) {
-		cv::Point2d l = this->agents[i]->get_loc2d();
-		cv::circle(map, l, 8, this->agents[i]->get_color(), -1);
-		//cv::Point2d tl = cv::Point2d(l.x - 3.0, l.y + 3.0);
-		//cv::Point2d br = cv::Point2d(l.x + 3.0, l.y - 3.0);
-		//cv::rectangle(map, cv::Rect(tl, br), orange, -1);
-	}
-
-	cv::putText(map, this->task_selection_method[this->test_iter], cv::Point2d(40.0, this->map_height + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+	cv::putText(map, this->task_selection_method, cv::Point2d(40.0, 10*this->map_size_meters.y + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 	char time[200];
-	sprintf_s(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
-	cv::putText(map, time, cv::Point2d(30.0, this->map_height + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
+	cv::putText(map, time, cv::Point2d(30.0, 10*this->map_size_meters.y + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 
+	cv::namedWindow("map", CV_WINDOW_NORMAL);
+	cv::imshow("map", map);
+	cv::waitKey(10);
 
-	double current_plot_time = 1000.0 * clock() / double(CLOCKS_PER_SEC);
-	cv::namedWindow("Map", cv::WINDOW_NORMAL);
-	cv::imshow("Map", map);
-	if (ms == 0) {
-		cv::waitKey(0);
-	}
-	else if (double(ms) - (this->last_plot_time - current_plot_time) < 0.0) {
-		cv::waitKey(ms - int(floor(this->last_plot_time - current_plot_time)));
-	}
-	else {
-		cv::waitKey(1);
-	}
-	this->last_plot_time = 1000.0 * clock() / double(CLOCKS_PER_SEC);
 }
 
+void World::display_world(Agent* agent) {
+	if (!this->show_display) {
+		return;
+	}
+
+	cv::Scalar red(0.0, 0.0, 255.0);
+	cv::Scalar blue(255.0, 0.0, 0.0);
+	cv::Scalar green(0.0, 255.0, 0.0);
+	cv::Scalar white(255.0, 255.0, 255.0);
+	cv::Scalar orange(69.0, 100.0, 255.0);
+	cv::Scalar black(0.0, 0.0, 0.0);
+	cv::Scalar gray(127.0, 127.0, 127.0);
+	cv::Mat map = cv::Mat::zeros(cv::Size(int(this->map_size_meters.x*10), int(this->map_size_meters.y*10) + 100), CV_8UC3);
+	// draw active tasks
+	for (int i = 0; i < this->n_nodes; i++) {
+		if (this->nodes[i]->is_active()) {
+			cv::Point2d l = this->nodes[i]->get_local_loc();
+			l.x *= 10;
+			l.y *= 10;
+			if(this->nodes[i]->get_task_type() == 0){
+				cv::circle(map, l, 10, red, -1);
+			}
+			else{
+				cv::circle(map, l, 10, green, -1);
+			}
+		}
+		else{
+			double d = 15.0;
+			cv::Point2d l = this->nodes[i]->get_local_loc();
+			l.x *= 10;
+			l.y *= 10;
+			cv::circle(map, l, 10, white, -1);
+		
+		}
+	}
+	
+
+	// draw agent goals
+	cv::Point2d l = this->nodes[agent->get_goal()->get_index()]->get_local_loc();
+	l.x *= 10;
+	l.y *= 10;
+	cv::circle(map, l, 20, blue, -1);
+	if(this->nodes[agent->get_goal()->get_index()]->get_task_type() == 0){
+		cv::circle(map, l, 10, red, -1);
+	}
+	else{
+		cv::circle(map, l, 10, green, -1);
+	}
+
+	l = this->nodes[agent->get_edge().x]->get_local_loc();
+	l.x *= 10;
+	l.y *= 10;	
+	cv::circle(map, l, 20, orange, -1);
+	
+	l = this->nodes[agent->get_edge().y]->get_local_loc();
+	l.x *= 10;
+	l.y *= 10;	
+	cv::circle(map, l, 20, orange, -1);
+	
+
+
+	// draw agents
+	l = agent->get_loc2d();
+	l.x *=10;
+	l.y *= 10;
+	cv::circle(map, l, 20, blue, -1);
+	
+	cv::putText(map, this->task_selection_method, cv::Point2d(40.0, 10*this->map_size_meters.y + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+	char time[200];
+	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
+	cv::putText(map, time, cv::Point2d(30.0, 10*this->map_size_meters.y + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+
+	cv::namedWindow("map", CV_WINDOW_NORMAL);
+	cv::imshow("map", map);
+	cv::waitKey(10);
+}
+
+/*
 Point2d Planner_Utils::local_to_global(const Point2d &local){
 	Point2d global;
 
