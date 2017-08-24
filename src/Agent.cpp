@@ -224,7 +224,7 @@ bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 	if(this->world->a_star(this->edge.y, this->goal_node->get_index(), path, length)){
 		
 		for(size_t i=0; i<path.size(); i++){
-			wp_path.push_back(this->world->get_nodes()[path[i]]->get_local_loc());
+			wp_path.push_back(this->world->get_nodes()[path[i]]->get_loc());
 		}
 		return true;
 	}
