@@ -3,6 +3,7 @@
 <index>1</index>
 <type>1</type>
 <travel_vel>5.0</travel_vel>
+<flight_altitude>8.0</flight_altitude>
 <pay_obstacle_cost>1</pay_obstacle_cost>
 <task_selection_method>"impact_completion_value"</planning_method>
 <task_claim_method>"greedy"</task_claim_method>

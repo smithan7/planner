@@ -252,8 +252,9 @@ cv::Point2d World::global_to_local(const cv::Point2d &loc){
 	return l;
 }
 
-bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &edge_progress){
+bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &edge_progress, const double  &radius, std::vector<int> &visiting_nodes){
 	// am I on the map?
+	visiting_nodes.clear();	
 	if(!this->on_map(loc)){
 		return false;
 	}
@@ -273,6 +274,10 @@ bool World::get_prm_location(const cv::Point2d &loc, cv::Point &edge, double &ed
 		else if(d < min1){
 			min2 = d;
 			ind2 = i;
+		}
+		
+		if(d < radius){
+			visiting_nodes.push_back(i);
 		}
 	}
 	

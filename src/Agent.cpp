@@ -34,6 +34,7 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	ROS_INFO("Dist Planner::Agent::init::World initialized");
 	this->n_tasks =  this->world->get_n_nodes();
 	this->travel_step = this->travel_vel *  this->world->get_dt();
+	this->obs_radius = 20.0;
 
 	// initialize classes
 	this->goal_node = new Goal();
@@ -56,15 +57,19 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	this->status_time = ros::Time::now(); // when did I last publish a status report
 	this->status_interval = ros::Duration(1.0);
 	this->act_time = ros::Time::now();
-	this->act_interval = ros::Duration(5.0); // how often should I replan if I don't get an update or request
+	this->act_interval = ros::Duration(1.0); // how often should I replan if I don't get an update or request
 	this->plot_time = ros::Time::now(); // when did I last display the plot
 	this->plot_interval = ros::Duration(1.0); // plot at 1 Hz
 
+	this->start_time = ros::Time::now();
+	this->world->set_c_time(this->start_time.toSec());
+	ROS_ERROR("start time: %.2f", this->start_time.toSec());
+
 	/////////////////////// Subscribers /////////////////////////////
 	// quad status callback, get position
-	this->quad_status_subscriber = nHandle.subscribe("/dji_bridge_status", 0, &Agent::DJI_Bridge_status_callback, this);
+	this->quad_status_subscriber = nHandle.subscribe("/dji_bridge_status", 1, &Agent::DJI_Bridge_status_callback, this);
 	// costmap_bridge status callback, currently does nothing
-	this->costmap_status_subscriber = nHandle.subscribe("/costmap_bridge_status", 0, &Agent::Costmap_Bridge_status_callback, this);
+	this->costmap_status_subscriber = nHandle.subscribe("/costmap_bridge_status", 1, &Agent::Costmap_Bridge_status_callback, this);
 
 	// har everyone else's plans
 	this->planner_update_subscriber = nHandle.subscribe("/agent_plans", 10, &Agent::planner_update_callback, this);
@@ -73,9 +78,11 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	// tell the Costmap Bridge where I am going
 	this->path_publisher =  nHandle.advertise<custom_messages::Costmap_Bridge_Travel_Path_MSG>("/wp_travel_path", 10);
 	// tell everyone my status
-	this->status_publisher = nHandle.advertise<custom_messages::Planner_Status_MSG>("/costmap_bridge_status", 10);
+	this->status_publisher = nHandle.advertise<custom_messages::Planner_Status_MSG>("/dist_planner_status", 10);
+	// publish plan to everyone
+	this->plan_publisher = nHandle.advertise<custom_messages::Planner_Update_MSG>("/agent_plans", 1);	
 	// publish marker to RVIZ
-	this->marker_publisher = nHandle.advertise<visualization_msgs::Marker>("/RVIZ", 10);
+	this->marker_publisher = nHandle.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1);
 }
 
 bool Agent::load_agent_params(const int &agent_index){
@@ -94,10 +101,12 @@ bool Agent::load_agent_params(const int &agent_index){
 	
 	f_agent["travel_vel"] >> this->travel_vel;
 	this->travel_step = 0.2 * this->travel_vel;
+	f_agent["flight_altitude"] >> this->flight_altitude;
 	f_agent["pay_obstacle_cost"] >> this->pay_obstacle_costs;
 	f_agent["task_selection_method"] >> this->task_selection_method;
 	f_agent["task_claim_method"] >> this->task_claim_method;
 	f_agent["task_claim_time"] >> this->task_claim_time;
+	
 	f_agent.release();
 	return true;
 }
@@ -118,9 +127,10 @@ void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& 
 
 
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){
+	this->world->set_c_time(ros::Time::now().toSec());
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
-	this->world->get_prm_location(this->loc, this->edge, this->edge_progress);
+	this->world->get_prm_location(this->loc, this->edge, this->edge_progress, this->obs_radius, this->visiting_nodes);
 	//ROS_INFO("loc: %.2f, %.2f", this->loc.x, this->loc.y);
 	//ROS_INFO("prm loc: edge: %i, %i", this->edge.x, this->edge.y);
 	//ROS_INFO("node loc: %.2f, %.2f", this->world->get_nodes()[this->edge.x]->get_local_loc().x, this->world->get_nodes()[this->edge.x]->get_local_loc().y);
@@ -136,9 +146,7 @@ void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status
 		publish_Agent_Status();
 	}
 
-	ROS_WARN("going into act");
 	this->act();
-	ROS_INFO("out of act");
 }
 
 void Agent::act() {
@@ -146,23 +154,23 @@ void Agent::act() {
 	// am  I at a node?
 	if (this->at_node()) {
 		//ROS_INFO("at node");
-		// I am at a node, am I at my goal and is it active still?
-		if (this->at_goal() &&  this->world->get_nodes()[this->goal_node->get_index()]->is_active()) {
-			//ROS_INFO("at goal");
-			this->work_done +=  this->world->get_nodes()[this->goal_node->get_index()]->get_acted_upon(this); // work on my goal
-		}
-		else {
-			//ROS_INFO("not at goal, plan");
-			this->planner->plan(); // I am not at my goal, select new goal
-			//ROS_INFO("advertise");
-			this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
-			//ROS_INFO("path and publish");
-			this->find_path_and_publish(); // on the right edge, move along edge
-		}
+		// work on nodes I am visiting	
+		this->do_work();
 	}
-	else { // not at a node
-		//ROS_INFO("not at node, find path and publish");
-		this->find_path_and_publish(); // move along edge
+	//ROS_INFO("not at goal, plan");
+	this->planner->plan(); // I am not at my goal, select new goal
+	//ROS_INFO("advertise");
+	this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
+	//ROS_INFO("path and publish");
+	this->find_path_and_publish(); // on the right edge, move along edge
+}
+
+void Agent::do_work(){
+	// I am at a node, if active, work on it it
+	for(size_t i=0; i<this->visiting_nodes.size(); i++){
+		if (this->world->get_nodes()[visiting_nodes[i]]->is_active()) {
+			this->work_done +=  this->world->get_nodes()[this->visiting_nodes[i]]->get_acted_upon(this); // work on my goal
+		}
 	}
 }
 
@@ -188,6 +196,7 @@ void Agent::find_path_and_publish(){
         	if(this->find_path(this->path)){
 				ROS_ERROR("path length: %i", int(this->path.size()));
         		this->publish_travel_path_to_costmap(this->path);
+				this->publish_rviz_path(this->path);
 				this->publish_plan();
         	}
 		}
@@ -201,9 +210,10 @@ void Agent::publish_travel_path_to_costmap(const std::vector<Point2d> &path){
 	for(size_t i=0; i<path.size(); i++){
 		// go from cells to loc_x, loc_y
 		// set path
-		path_msg.longitudes.push_back(double(path[i].x));
-		path_msg.latitudes.push_back(double(path[i].y));
+		path_msg.local_xs.push_back(double(path[i].x));
+		path_msg.local_ys.push_back(double(path[i].y));
 	}
+	path_msg.altitude = this->flight_altitude;
 	this->path_publisher.publish(path_msg);
 }
 
@@ -214,6 +224,7 @@ void Agent::publish_plan(){
 	ROS_WARN("Agent::publish_plan::assuming greedy selection");	
 	msg.probability = 1.0;
 	msg.time = this->goal_node->get_completion_time();
+	plan_publisher.publish(msg);
 }
 
 
@@ -221,11 +232,12 @@ bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 	// ensure starting fresh
 	std::vector<int> path;
 	double length = 0;
-	if(this->world->a_star(this->edge.y, this->goal_node->get_index(), path, length)){
+	if(this->world->a_star(this->edge.x, this->goal_node->get_index(), path, length)){
 		
-		for(size_t i=0; i<path.size(); i++){
-			wp_path.push_back(this->world->get_nodes()[path[i]]->get_loc());
+		for(size_t i=path.size()-1; i>0; i--){
+			wp_path.push_back(this->world->get_nodes()[path[i]]->get_local_loc());
 		}
+		wp_path.push_back(this->world->get_nodes()[this->goal_node->get_index()]->get_local_loc());
 		return true;
 	}
 	return false;
@@ -259,19 +271,17 @@ void Agent::planner_status_callback( const custom_messages::Planner_Status_MSG& 
 }
 
 bool Agent::at_node(int node) {
-	if (this->edge_progress >= 0.9 && this->edge.y == node) {
-		return true;
+
+	for(size_t i=0; i<this->visiting_nodes.size(); i++){
+		if(this->visiting_nodes[i] == node){
+			return true;
+		}
 	}
-	else if (this->edge_progress <= 0.1 && this->edge.x == node) {
-		return true;
-	}
-	else {
-		return false;
-	}
+	return false;
 }
 
 bool Agent::at_node() { // am I at a node, by edge progress?
-	if (this->edge_progress <= 0.1 || this->edge_progress >= 0.9) {
+	if (this->visiting_nodes.size() > 0) {
 		return true;
 	}
 	else {
@@ -289,6 +299,72 @@ bool Agent::at_goal() { // am I at my goal node?
 	else{
 		return false;
 	}
+}
+
+void Agent::publish_rviz_path(const std::vector<Point2d> &path){
+	visualization_msgs::MarkerArray marker_array;
+
+	int marker_cntr = 500;
+
+	for(size_t i=0; i<path.size(); i++){
+		visualization_msgs::Marker marker = makeRvizMarker(path[i], 2.0, 1, marker_cntr);
+		marker_array.markers.push_back(marker);		
+		marker_cntr++;
+	}
+	visualization_msgs::Marker marker = makeRvizMarker(this->loc, 5.0, 2, marker_cntr);
+	marker_array.markers.push_back(marker);
+	marker_cntr++;
+	
+	this->marker_publisher.publish(marker_array);
+}
+
+visualization_msgs::Marker Agent::makeRvizMarker(const Point2d &loc, const double &radius, const int &color, const int &id){
+	visualization_msgs::Marker marker;
+    // Set the frame ID and timestamp.  See the TF tutorials for information on these.
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+
+    // Set the namespace and id for this marker.  This serves to create a unique ID
+    // Any marker sent with the same namespace and id will overwrite the old one
+    marker.ns = "basic_shapes";
+    marker.id = id;
+
+        // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
+    marker.type = visualization_msgs::Marker::SPHERE;
+
+    // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
+    marker.action = visualization_msgs::Marker::ADD;
+
+    // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
+    marker.pose.position.x = loc.x;
+    marker.pose.position.y = loc.y;
+    marker.pose.position.z = 1.5;
+    marker.pose.orientation.w = 1.0;
+
+    // Set the scale of the marker -- 1x1x1 here means 1m on a side
+    marker.scale.x = radius;
+    marker.scale.y = radius;
+    marker.scale.z = radius;
+
+    // Set the color -- be sure to set alpha to something non-zero!
+
+    marker.color.r = 0.0f;
+    marker.color.g = 0.0f;
+    marker.color.b = 0.0f;
+    marker.color.a = 1.0;
+
+    if(color == 0){
+    	marker.color.r = 1.0f;
+    }
+    else if(color == 1){
+    	marker.color.g = 1.0f;
+    }
+    else if(color == 2){
+    	marker.color.b = 1.0f;
+    }
+
+    marker.lifetime = ros::Duration(1);
+	return marker;    
 }
 
 

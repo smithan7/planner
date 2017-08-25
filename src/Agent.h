@@ -18,6 +18,7 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h> // action server
 #include <visualization_msgs/Marker.h> // for making marks in rviz
+#include <visualization_msgs/MarkerArray.h> // arrays of markers
 #include <costmap_2d/costmap_2d.h>
 #include "geometry_msgs/PoseStamped.h"
 
@@ -101,7 +102,7 @@ public:
 	// publish stuff to RVIZ
 	ros::Publisher marker_publisher;
 	void publish_rviz_path(const std::vector<Point2d> &path);
-	void publishRvizMarker(const Point2d &loc, const double &radius, const int &color, const int &id);
+	visualization_msgs::Marker makeRvizMarker(const Point2d &loc, const double &radius, const int &color, const int &id);
 
 	// status of the quad	
 	bool travelling, waiting, emergency_stopped, planning;
@@ -110,16 +111,21 @@ public:
 	bool locationInitialized, costmapInitialized;
 
 	// for timing
-	ros::Time act_time, plot_time, status_time;
+	ros::Time act_time, plot_time, status_time, start_time;
 	ros::Duration act_interval, plot_interval, status_interval;
 
 	/********************************************************************/
 	/*********************** Begin My Stuff *****************************/
 	/********************************************************************/
 
-	bool at_node(int node);
 	void act();
+	void do_work();
+	bool at_node(int node);
 	
+	
+	std::vector<int> visiting_nodes;
+	double obs_radius;
+
 	// access private variables
 	int get_index() { return this->index; };
 	cv::Point2d get_loc2d() { return this->loc; };
@@ -145,6 +151,7 @@ public:
 private:
 	// location in lat/lon
 	cv::Point2d loc, goal, published_goal;
+	double flight_altitude;
 	std::vector< cv::Point2d > path;
 
 	// planning and coordinator

@@ -53,9 +53,10 @@ public:
 	double rand_double_in_range(const double & min, const double & max);
 	bool valid_node(const int & n);
 	bool valid_agent(const int a);
+	void set_c_time(const double &s) {this->c_time = s; };
 
 	// brought over from ROS
-	bool get_prm_location(const cv::Point2d&loc, cv::Point &edge, double &edge_progress);
+	bool get_prm_location(const cv::Point2d&loc, cv::Point &edge, double &edge_progress, const double &radius, std::vector<int> &visiting_nodes);
 	cv::Point2d global_to_local(const cv::Point2d &loc);
 	double to_radians(const double &deg);
 	double get_global_heading(const cv::Point2d &g1, const cv::Point2d &g2);
