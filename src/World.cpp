@@ -218,10 +218,13 @@ bool World::load_robot_tasks(const int &test_environment_number){
     return true;
 }
 
-void World::add_stop_to_agents_path(const int &agent_index, const int &task_index, const double &probability, const double &time){
+void World::add_stop_to_agents_path(const int &agent_index, const std::vector<int> &task_index, const std::vector<double> &probability, const std::vector<double> &time){
 	ROS_WARN("Dist Planner::World::add stop to agent path: TODO: only using a single bid");
 	this->agent_coords[agent_index]->reset_prob_actions();
-	this->agent_coords[agent_index]->add_stop_to_path(task_index, time, probability);
+
+	for(size_t i=0; i<task_index.size(); i++){
+		this->agent_coords[agent_index]->add_stop_to_path(task_index[i], time[i], probability[i]);
+	}
 }
 
 
@@ -543,9 +546,9 @@ for (int i = 0; i < this->n_nodes; i++) {
 	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
 	cv::putText(map, time, cv::Point2d(30.0, 10*this->map_size_meters.y + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 
-	cv::namedWindow("map", CV_WINDOW_NORMAL);
-	cv::imshow("map", map);
-	cv::waitKey(10);
+	//cv::namedWindow("map", CV_WINDOW_NORMAL);
+	//cv::imshow("map", map);
+	//cv::waitKey(10);
 
 }
 
@@ -621,9 +624,9 @@ void World::display_world(Agent* agent) {
 	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
 	cv::putText(map, time, cv::Point2d(30.0, 10*this->map_size_meters.y + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 
-	cv::namedWindow("map", CV_WINDOW_NORMAL);
-	cv::imshow("map", map);
-	cv::waitKey(10);
+	//cv::namedWindow("map", CV_WINDOW_NORMAL);
+	//cv::imshow("map", map);
+	//cv::waitKey(10);
 }
 
 /*

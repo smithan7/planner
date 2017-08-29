@@ -219,11 +219,12 @@ void Agent::publish_travel_path_to_costmap(const std::vector<Point2d> &path){
 
 void Agent::publish_plan(){
 	custom_messages::Planner_Update_MSG msg;
-	msg.node_index = this->goal_node->get_index();
 	msg.agent_index = this->index;
+
+	msg.node_index.push_back(this->goal_node->get_index());
 	ROS_WARN("Agent::publish_plan::assuming greedy selection");	
-	msg.probability = 1.0;
-	msg.time = this->goal_node->get_completion_time();
+	msg.probability.push_back(1.0);
+	msg.time.push_back(this->goal_node->get_completion_time());
 	plan_publisher.publish(msg);
 }
 

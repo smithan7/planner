@@ -24,7 +24,7 @@ public:
 	World();	
 	bool init(const int &test_environment_number, const int &test_scenario_number);
 	double get_team_probability_at_time_except(const double & time, const int & task, const int & except_agent);
-	void add_stop_to_agents_path(const int &agent_index, const int &task_index, const double &probability, const double &time);
+	void add_stop_to_agents_path(const int &agent_index, const std::vector<int> &task_index, const std::vector<double> &probability, const std::vector<double> &time);
 	~World();
 
 	// accessing private vars
