@@ -44,6 +44,27 @@ void Agent_Coordinator::reset_prob_actions() {
 	}
 }
 
+bool Agent_Coordinator::get_plan(custom_messages::Planner_Update_MSG &msg){
+
+	msg.agent_index = this->owner->get_index();
+	msg.node_index.clear();
+	msg.probability.clear();
+	msg.time.clear();
+
+	for(int i=0; i<this->n_tasks; i++){
+		for(size_t j=1; j<this->prob_actions[i]->get_arrival_time().size()-1; j++){
+			msg.node_index.push_back(this->prob_actions[i]->get_task_index());
+			msg.probability.push_back(this->prob_actions[i]->get_probability_of_completion()[j]);
+			msg.time.push_back( this->prob_actions[i]->get_arrival_time()[j] );						
+		}
+	}
+
+
+	return true;
+
+}
+
+
 bool Agent_Coordinator::get_advertised_task_claim_probability(int task_num, double query_time, double &prob_taken, World* world) {;
 	if (task_num < 0 || task_num > this->n_tasks) {
 		return false;

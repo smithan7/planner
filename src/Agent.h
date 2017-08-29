@@ -93,6 +93,7 @@ public:
 	// publish plan to rest of team
 	ros::Publisher plan_publisher;
 	void publish_plan(); // share plan with the rest of my team
+	void publish_plan(const custom_messages::Planner_Update_MSG &msg);
 
 
 	// publish to the planner and dji_bridge

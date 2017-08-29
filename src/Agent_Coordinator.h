@@ -4,6 +4,9 @@
 #include<iostream>
 #include<string> // for string class
 
+// talk to other planners
+#include <custom_messages/Planner_Update_MSG.h>
+
 class Probability_Node;
 class World;
 class Agent;
@@ -24,6 +27,8 @@ public:
 	void reset_prob_actions(); // reset my probable actions
 	void add_stop_to_path(const int &task_index, const double &time, const double &prob);
 	double get_reward_impact(int task, int agent, double completion_time, World* world);
+
+	bool get_plan(custom_messages::Planner_Update_MSG &msg);
 
 private:
 

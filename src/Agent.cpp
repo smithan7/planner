@@ -163,6 +163,15 @@ void Agent::act() {
 	this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
 	//ROS_INFO("path and publish");
 	this->find_path_and_publish(); // on the right edge, move along edge
+
+	custom_messages::Planner_Update_MSG msg;
+	if(this->coordinator->get_plan(msg)){
+		this->publish_plan(msg);
+	}
+}
+
+void Agent::publish_plan(const custom_messages::Planner_Update_MSG &msg){
+	plan_publisher.publish(msg);
 }
 
 void Agent::do_work(){
