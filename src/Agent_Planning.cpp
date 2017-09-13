@@ -18,8 +18,8 @@ Agent_Planning::Agent_Planning(Agent* agent, World* world_in){
 Agent_Planning::~Agent_Planning(){}
 
 void Agent_Planning::plan() {
-	ROS_INFO("into planner");
-	cerr << "task selection method: " << this->task_selection_method << endl;
+	//ROS_INFO("into planner");
+	//cerr << "task selection method: " << this->task_selection_method << endl;
 	//ROS_INF0("    task_selection_method: %s", this->task_selection_method.c_str() );
 	// randomly select nbr node
 	if (this->task_selection_method.compare("random_nbr") == 0) {
