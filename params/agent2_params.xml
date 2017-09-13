@@ -4,7 +4,7 @@
 	<index>2</index>
 	<type>0</type>
 	<travel_vel>3.0</travel_vel>
-	<obs_radius>10.0</obs_radius>
+	<obs_radius>25.0</obs_radius>
 	<flight_altitude>0.0</flight_altitude>
 	<pay_obstacle_cost>0</pay_obstacle_cost>
 	<task_selection_method>"value_completion"</task_selection_method>
