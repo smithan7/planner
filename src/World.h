@@ -38,7 +38,7 @@ public:
 	double get_end_time() { return this->end_time; };
 	cv::Point2d get_NW_Corner() {return this->NW_Corner; };
 	std::string get_task_selection_method() { return this->task_selection_method; };
-
+	cv::Point2d get_map_size_meters() {return this->map_size_meters; };
 
 	// utility functions
 	bool a_star(const int & start, const int & goal, std::vector<int>& path, double & length);
@@ -66,7 +66,7 @@ public:
 
 private:
 
-	cv::Point2d NW_Corner, SE_Corner;
+	cv::Point2d NW_Corner, SE_Corner, NE_Corner, SW_Corner;
 	cv::Point2d map_size_meters;
 	std::vector<std::vector<double> > agent_work;
 

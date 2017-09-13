@@ -88,7 +88,8 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 bool Agent::load_agent_params(const int &agent_index){
 	this->index = agent_index;
 	char agent_file[200];
-	sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	//sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
     cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
     if (!f_agent.isOpened()){
         ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
@@ -129,9 +130,12 @@ void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& 
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){
 	this->world->set_c_time(ros::Time::now().toSec());
 	// move these two to DJI_Bridge status callback, find out which node I am on
-	this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
+	//this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
+	//ROS_WARN("status_in loc: %0.6f, %0.6f", status_in.longitude, status_in.latitude);
+	cv::Point2d g = cv::Point2d(status_in.longitude, status_in.latitude);
+	this->loc = this->world->global_to_local(g);
 	this->world->get_prm_location(this->loc, this->edge, this->edge_progress, this->obs_radius, this->visiting_nodes);
-	//ROS_INFO("loc: %.2f, %.2f", this->loc.x, this->loc.y);
+	//ROS_WARN("loc: %.2f, %.2f", this->loc.x, this->loc.y);
 	//ROS_INFO("prm loc: edge: %i, %i", this->edge.x, this->edge.y);
 	//ROS_INFO("node loc: %.2f, %.2f", this->world->get_nodes()[this->edge.x]->get_local_loc().x, this->world->get_nodes()[this->edge.x]->get_local_loc().y);
 	locationInitialized = true;
@@ -151,14 +155,9 @@ void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status
 
 void Agent::act() {
 	//ROS_INFO("in act");
-	// am  I at a node?
-	if (this->at_node()) {
-		//ROS_INFO("at node");
-		// work on nodes I am visiting	
-		this->do_work();
-	}
-	//ROS_INFO("not at goal, plan");
-	this->planner->plan(); // I am not at my goal, select new goal
+	// attempt to complete tasks
+	this->do_work();
+	this->planner->plan(); // select goal
 	//ROS_INFO("advertise");
 	this->coordinator->advertise_task_claim(this->world); // select the next edge on the path to goal 
 	//ROS_INFO("path and publish");
@@ -167,6 +166,7 @@ void Agent::act() {
 	custom_messages::Planner_Update_MSG msg;
 	if(this->coordinator->get_plan(msg)){
 		this->publish_plan(msg);
+		this->coordinator->reset_prob_actions();
 	}
 }
 
@@ -200,10 +200,10 @@ void Agent::find_path_and_publish(){
 			ROS_WARN("Agent::act::waiting on location callback");
 		}
 
-        if( flag || true ){
+        if( flag ){
         	this->path.clear();
         	if(this->find_path(this->path)){
-				ROS_ERROR("path length: %i", int(this->path.size()));
+				ROS_WARN("Dist_Planner::Agent::find_path_and_publish::path length: %i", int(this->path.size()));
         		this->publish_travel_path_to_costmap(this->path);
 				this->publish_rviz_path(this->path);
 				this->publish_plan();
@@ -240,10 +240,10 @@ void Agent::publish_plan(){
 
 bool Agent::find_path( std::vector<cv::Point2d> &wp_path ){
 	// ensure starting fresh
+	wp_path.clear();
 	std::vector<int> path;
 	double length = 0;
 	if(this->world->a_star(this->edge.x, this->goal_node->get_index(), path, length)){
-		
 		for(size_t i=path.size()-1; i>0; i--){
 			wp_path.push_back(this->world->get_nodes()[path[i]]->get_local_loc());
 		}

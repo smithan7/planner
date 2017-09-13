@@ -1,6 +1,0 @@
-<launch>
-  <depend package="my_custom_msg_package" />
-  <group ns="distributed_planner">
-    <node pkg="distributed_planner" name="distributed_planner" type="distributed_planner" output="screen"/>
-  </group>
-</launch>

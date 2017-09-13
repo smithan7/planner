@@ -26,8 +26,6 @@ public:
 	void deactivate(); // deactivate the function
 	~Map_Node();
 
-	double get_x() { return this->x; };
-	double get_y() { return this->y; };
 	cv::Point2d get_loc() { return this->loc; }; // get  node location
 	cv::Point2d get_local_loc() {return this->local_loc; };
 	bool get_nbr_i(const int &index, int &nbr_index);
@@ -43,11 +41,8 @@ public:
 	void set_work(const std::vector<double> &work);
 
 private:
-	double x;
-	double y;
-	cv::Point2d loc, goal;
+	cv::Point2d loc;
 	cv::Point2d local_loc;
-	cv::Point2d map_size_meters;
 
 	int index;
 	cv::Scalar color;

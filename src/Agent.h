@@ -84,7 +84,6 @@ public:
 	// subscribe to Costmap_Bridge status
 	ros::Subscriber costmap_status_subscriber;
 	void Costmap_Bridge_status_callback( const custom_messages::Costmap_Bridge_Status_MSG& status_in);
-	
 
 	// publish wp path to Costmap Bridge
 	ros::Publisher path_publisher;
@@ -94,7 +93,6 @@ public:
 	ros::Publisher plan_publisher;
 	void publish_plan(); // share plan with the rest of my team
 	void publish_plan(const custom_messages::Planner_Update_MSG &msg);
-
 
 	// publish to the planner and dji_bridge
 	ros::Publisher status_publisher;

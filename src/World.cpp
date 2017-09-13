@@ -16,14 +16,14 @@ World::World(){
 	// initialize cost tracking
 	this->cumulative_open_reward = 0.0;
 	this->dt = 0.2;
+	this->map_size_meters.x = 0.0;
+	this->map_size_meters.y = 0.0;
 
 }
 
 bool World::init(const int &test_environment_number, const int &test_scenario_number){
 
 	this->show_display = true;
-
-
 
 	// initialize PRM and tasks	
 	if(!this->load_PRM_vertices(test_environment_number)){
@@ -61,7 +61,8 @@ bool World::init(const int &test_environment_number, const int &test_scenario_nu
 
 bool World::load_test_scenario(const int &test_scenario_number){
 	char sc_file[200];
-	sprintf(sc_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
+	//sprintf(sc_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
+    sprintf(sc_file, "/home/andy/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
     cv::FileStorage f_scenario(sc_file, cv::FileStorage::READ);
     if (!f_scenario.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", sc_file);
@@ -98,7 +99,8 @@ bool World::load_test_scenario(const int &test_scenario_number){
 bool World::load_PRM_vertices(const int &test_environment_number){
 
 	char vert_file[200];
-	sprintf(vert_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
+	sprintf(vert_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
+	//sprintf(vert_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
     cv::FileStorage f_verts(vert_file, cv::FileStorage::READ);
     if (!f_verts.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", vert_file);
@@ -112,13 +114,18 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 	this->NW_Corner.y = corners[1];
 	this->SE_Corner.x = corners[2];
 	this->SE_Corner.y = corners[3];
+	this->SW_Corner.x = corners[0];
+	this->SW_Corner.y = corners[3];
+	this->NE_Corner.x = corners[2];
+	this->NE_Corner.y = corners[1];
 
 	this->map_size_meters.x = 0.0;
 	this->map_size_meters.y = 0.0;
-	this->map_size_meters = this->global_to_local(this->SE_Corner);
+	this->map_size_meters = this->global_to_local(this->NE_Corner);
 	this->map_size_meters.x = abs(this->map_size_meters.x);
 	this->map_size_meters.y = abs(this->map_size_meters.y);
 	
+	ROS_INFO("    map size: %0.2f, %0.2f (meters)", this->map_size_meters.x, this->map_size_meters.y);
 
 	// set map nodes
 	cv::Scalar red(0,0,255);
@@ -131,8 +138,10 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 		std::vector<double> n_stuff;
 		f_verts[node_num] >> n_stuff;
 		// n_stuff = [x,y];
+		//ROS_INFO("vertice[%i]: %0.6f, %0.6f", i, n_stuff[0], n_stuff[1]);
 		Map_Node* m = new Map_Node(n_stuff[0], n_stuff[1], i, 0, default_work, red, this);	
 		this->nodes.push_back(m);
+		//ROS_INFO("v[%i] local loc: %0.2f, %0.2f", i, m->get_local_loc().x, m->get_local_loc().y);
 	}
 	f_verts.release();
 	return true;
@@ -140,7 +149,8 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 
 bool World::load_PRM_edges(const int &test_environment_number){
 	char edge_file[200];
-	sprintf(edge_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
+	//sprintf(edge_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
+	sprintf(edge_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
     cv::FileStorage f_edges(edge_file, cv::FileStorage::READ);
     if (!f_edges.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", edge_file);
@@ -168,7 +178,8 @@ bool World::load_PRM_edges(const int &test_environment_number){
 
 bool World::load_human_tasks(const int &test_environment_number){
 	char human_file[200];
-	sprintf(human_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
+	sprintf(human_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
+	//sprintf(human_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
     cv::FileStorage f_human(human_file, cv::FileStorage::READ);
     if (!f_human.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", human_file);
@@ -194,7 +205,8 @@ bool World::load_human_tasks(const int &test_environment_number){
 bool World::load_robot_tasks(const int &test_environment_number){
 
 	char robot_file[200];
-	sprintf(robot_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
+	sprintf(robot_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
+	//sprintf(robot_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
     cv::FileStorage f_robot(robot_file, cv::FileStorage::READ);
     if (!f_robot.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", robot_file);
@@ -202,7 +214,6 @@ bool World::load_robot_tasks(const int &test_environment_number){
     }
 	ROS_INFO("Dist planner::World::init::Opened: %s", robot_file);
     
-
     f_robot["n_tasks"] >> this->n_robot_tasks;
 	for(int i=0; i<n_robot_tasks; i++){
 		char task_num[200];
@@ -246,11 +257,16 @@ bool World::on_map(const cv::Point2d &loc){
 }
 
 cv::Point2d World::global_to_local(const cv::Point2d &loc){
-	double b = this->get_global_heading(this->NW_Corner, loc);
-	double d = this->get_global_distance(this->NW_Corner, loc);
+	double b = this->get_global_heading(this->SW_Corner, loc);
+	double d = this->get_global_distance(this->SW_Corner, loc);
+	//ROS_INFO("Distance/Bearing: %0.2f, %0.2f", d,b);
+	//ROS_INFO("SW_Corner: %0.6f, %0.6f", this->SW_Corner.x, this->SW_Corner.y);
 	cv::Point2d l;
-	l.x = -d*cos(b);
-	l.y = d*sin(b);
+	l.x = d*sin(b);
+	l.y =this->map_size_meters.y - d*cos(b);
+	//ROS_INFO("Point: %0.2f, %0.2f", d*sin(b), d*cos(b));
+	//ROS_INFO("Map size: %0.2f, %0.2f", this->map_size_meters.x, this->map_size_meters.y);
+	
 
 	return l;
 }
@@ -540,7 +556,6 @@ for (int i = 0; i < this->n_nodes; i++) {
 		}
 	}
 
-
 	cv::putText(map, this->task_selection_method, cv::Point2d(40.0, 10*this->map_size_meters.y + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 	char time[200];
 	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
@@ -564,28 +579,48 @@ void World::display_world(Agent* agent) {
 	cv::Scalar orange(69.0, 100.0, 255.0);
 	cv::Scalar black(0.0, 0.0, 0.0);
 	cv::Scalar gray(127.0, 127.0, 127.0);
-	cv::Mat map = cv::Mat::zeros(cv::Size(int(this->map_size_meters.x*10), int(this->map_size_meters.y*10) + 100), CV_8UC3);
-	// draw active tasks
+	cv::Mat map_d = cv::Mat::zeros(cv::Size(int(this->map_size_meters.x*10), int(this->map_size_meters.y*10)), CV_8UC3);
+
+	char img_file[200];
+	sprintf(img_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
+	cv::Mat map = cv::imread(img_file, CV_LOAD_IMAGE_COLOR);
+	cv::resize(map, map, map_d.size());
+
 	for (int i = 0; i < this->n_nodes; i++) {
+		cv::Point2d l = this->nodes[i]->get_local_loc();
+		l.x *= 10.0;
+		l.y *= 10.0;
+		for(int j=0; j<this->nodes[i]->get_n_nbrs(); j++){
+			int ni;
+			this->nodes[i]->get_nbr_i(j, ni);
+			cv::Point2d n = this->nodes[ni]->get_local_loc();
+			n.x *= 10.0;
+			n.y *= 10.0;
+			cv::line(map, l, n, black, 1);
+		}
+	}
+	
+
+	// draw tasks
+	for (int i = 0; i < this->n_nodes; i++) {
+		cv::Point2d l = this->nodes[i]->get_local_loc();
+		l.x *= 10.0;
+		l.y *= 10.0;
 		if (this->nodes[i]->is_active()) {
-			cv::Point2d l = this->nodes[i]->get_local_loc();
-			l.x *= 10;
-			l.y *= 10;
 			if(this->nodes[i]->get_task_type() == 0){
-				cv::circle(map, l, 10, red, -1);
+				cv::circle(map, l, 20, red, -1);
 			}
 			else{
-				cv::circle(map, l, 10, green, -1);
+				cv::circle(map, l, 20, green, -1);
 			}
 		}
-		else{
-			double d = 15.0;
-			cv::Point2d l = this->nodes[i]->get_local_loc();
-			l.x *= 10;
-			l.y *= 10;
+		else{ // draw inactive tasks
 			cv::circle(map, l, 10, white, -1);
-		
 		}
+		//char time[20];
+		//sprintf(time, "%i", i);
+		//cv::putText(map, time, l, CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+
 	}
 	
 
@@ -593,40 +628,39 @@ void World::display_world(Agent* agent) {
 	cv::Point2d l = this->nodes[agent->get_goal()->get_index()]->get_local_loc();
 	l.x *= 10;
 	l.y *= 10;
-	cv::circle(map, l, 20, blue, -1);
 	if(this->nodes[agent->get_goal()->get_index()]->get_task_type() == 0){
+		cv::circle(map, l, 20, blue, -1);
 		cv::circle(map, l, 10, red, -1);
 	}
 	else{
+		cv::circle(map, l, 20, blue, -1);
 		cv::circle(map, l, 10, green, -1);
 	}
 
 	l = this->nodes[agent->get_edge().x]->get_local_loc();
 	l.x *= 10;
-	l.y *= 10;	
-	cv::circle(map, l, 20, orange, -1);
-	
+	l.y *= 10;
+	cv::circle(map, l, 5, orange, -1);
+
 	l = this->nodes[agent->get_edge().y]->get_local_loc();
 	l.x *= 10;
-	l.y *= 10;	
-	cv::circle(map, l, 20, orange, -1);
-	
-
+	l.y *= 10;
+	cv::circle(map, l, 5, orange, -1);
 
 	// draw agents
 	l = agent->get_loc2d();
-	l.x *=10;
+	l.x *= 10;
 	l.y *= 10;
 	cv::circle(map, l, 20, blue, -1);
 	
-	cv::putText(map, this->task_selection_method, cv::Point2d(40.0, 10*this->map_size_meters.y + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
+	cv::putText(map, this->task_selection_method, cv::Point2d(40.0, 10*this->map_size_meters.x + 30.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 	char time[200];
 	sprintf(time, "Time: %.2f of %.2f", this->c_time, this->end_time);
 	cv::putText(map, time, cv::Point2d(30.0, 10*this->map_size_meters.y + 80.0), CV_FONT_HERSHEY_COMPLEX, 1.0, white, 3);
 
-	//cv::namedWindow("map", CV_WINDOW_NORMAL);
-	//cv::imshow("map", map);
-	//cv::waitKey(10);
+	cv::namedWindow("map", CV_WINDOW_NORMAL);
+	cv::imshow("map", map);
+	cv::waitKey(10);
 }
 
 /*

@@ -1,0 +1,33 @@
+<launch>
+  <depend package="my_custom_msg_package" />
+
+  <arg name="test_environment_number" default="4"/>
+  <arg name="test_scenario_number" default="0"/>
+  <arg name="agent_index" default="0"/>
+  
+
+	<!-- Useful transforms -->  
+  	<node pkg="tf" type="static_transform_publisher" name="map_2_world_broadcaster" args="0 0 0 0 0 0 1 world map 100" />
+
+	<node pkg="tf" type="static_transform_publisher" name="gps_2_world_broadcaster" args="0 0 0 0 0 0 1 world gps 100" />
+
+
+  <!-- Launch the human agent bridge -->
+  <node name="human_bridge" pkg="human_bridge" type="human_bridge.py" output="screen">
+	   <param name="test_environment_number" value="$( arg test_environment_number )" />
+  </node>
+
+  <!-- Launch the costmap bridge -->
+  <group ns="costmap_bridge">
+    <node pkg="costmap_bridge" name="costmap_bridge" type="costmap_bridge" output="screen"/>
+       <param name="test_environment_number" value="$( arg test_environment_number )"/>
+    	<param name="agent_index" value="$( arg agent_index )"/>
+  </group>
+
+  <!-- Launch the high level planner -->
+  <group ns="distributed_planner">
+    <node pkg="distributed_planner" name="distributed_planner" type="distributed_planner" output="screen"/>
+       <param name="test_environment_number" value="$( arg test_environment_number )"/>
+       <param name="test_scenario_number" value="$( arg test_scenario_number )"/>
+    	<param name="agent_index" value="$( arg agent_index )"/>
+  </group>

@@ -6,8 +6,6 @@
 
 Map_Node::Map_Node(const double &x, const double &y, const int &index, const int &task_type, const std::vector<double> &work, const cv::Scalar &color, World* world){
 	// where am I?
-	this->x = x;
-	this->y = y;
 	this->loc = cv::Point2d(x, y);
 	this->index = index;
 	this->color = color;
@@ -26,6 +24,8 @@ Map_Node::Map_Node(const double &x, const double &y, const int &index, const int
 
 	// how much work does it take to complete this task
 	this->remaining_work = 1.0;
+
+	this->active = false;
 }
 
 void Map_Node::deactivate() {
