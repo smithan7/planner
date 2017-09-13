@@ -4,9 +4,10 @@
 	<index>0</index>
 	<type>1</type>
 	<travel_vel>6.0</travel_vel>
+	<obs_radius>10.0</obs_radius>
 	<flight_altitude>36.0</flight_altitude>
 	<pay_obstacle_cost>0</pay_obstacle_cost>
-	<task_selection_method>"impact_completion_value"</task_selection_method>
+	<task_selection_method>"value_completion"</task_selection_method>
 	<task_claim_method>"greedy"</task_claim_method>
 	<task_claim_time>"completion_time"</task_claim_time>
 </opencv_storage>

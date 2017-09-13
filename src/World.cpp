@@ -61,8 +61,8 @@ bool World::init(const int &test_environment_number, const int &test_scenario_nu
 
 bool World::load_test_scenario(const int &test_scenario_number){
 	char sc_file[200];
-	//sprintf(sc_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
-    sprintf(sc_file, "/home/andy/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
+	sprintf(sc_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
+    //sprintf(sc_file, "/home/andy/catkin_ws/src/distributed_planner/params/test_scenario%i.xml", test_scenario_number);
     cv::FileStorage f_scenario(sc_file, cv::FileStorage::READ);
     if (!f_scenario.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", sc_file);
@@ -93,14 +93,16 @@ bool World::load_test_scenario(const int &test_scenario_number){
 	f_scenario.release();
 
 	ROS_INFO("Dist planner::World::init::set work for %i task types", this->n_task_types);
+	ROS_INFO("   %0.1f, %0.1f", this->agent_work[0][0], this->agent_work[0][1]);
+	ROS_INFO("   %0.1f, %0.1f", this->agent_work[1][0], this->agent_work[1][1]); 
     return true;
 }
 
 bool World::load_PRM_vertices(const int &test_environment_number){
 
 	char vert_file[200];
-	sprintf(vert_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
-	//sprintf(vert_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
+	//sprintf(vert_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
+	sprintf(vert_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_vertices.xml", test_environment_number);
     cv::FileStorage f_verts(vert_file, cv::FileStorage::READ);
     if (!f_verts.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", vert_file);
@@ -129,7 +131,7 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 
 	// set map nodes
 	cv::Scalar red(0,0,255);
-	std::vector<double> default_work = std::vector<double>(0.0, 0.0);
+	std::vector<double> default_work = std::vector<double>(1.0, 0.0);
 
     f_verts["n_vertices"] >> this->n_nodes;
 	char node_num[200];
@@ -149,8 +151,8 @@ bool World::load_PRM_vertices(const int &test_environment_number){
 
 bool World::load_PRM_edges(const int &test_environment_number){
 	char edge_file[200];
-	//sprintf(edge_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
-	sprintf(edge_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
+	sprintf(edge_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
+	//sprintf(edge_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_edges.xml", test_environment_number);
     cv::FileStorage f_edges(edge_file, cv::FileStorage::READ);
     if (!f_edges.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", edge_file);
@@ -178,8 +180,8 @@ bool World::load_PRM_edges(const int &test_environment_number){
 
 bool World::load_human_tasks(const int &test_environment_number){
 	char human_file[200];
-	sprintf(human_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
-	//sprintf(human_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
+	//sprintf(human_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
+	sprintf(human_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_human_tasks.xml", test_environment_number);
     cv::FileStorage f_human(human_file, cv::FileStorage::READ);
     if (!f_human.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", human_file);
@@ -205,8 +207,8 @@ bool World::load_human_tasks(const int &test_environment_number){
 bool World::load_robot_tasks(const int &test_environment_number){
 
 	char robot_file[200];
-	sprintf(robot_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
-	//sprintf(robot_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
+	//sprintf(robot_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
+	sprintf(robot_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_uav_tasks.xml", test_environment_number);
     cv::FileStorage f_robot(robot_file, cv::FileStorage::READ);
     if (!f_robot.isOpened()){
         ROS_ERROR("Dist planner::World::init::Failed to open %s", robot_file);
@@ -582,7 +584,8 @@ void World::display_world(Agent* agent) {
 	cv::Mat map_d = cv::Mat::zeros(cv::Size(int(this->map_size_meters.x*10), int(this->map_size_meters.y*10)), CV_8UC3);
 
 	char img_file[200];
-	sprintf(img_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
+	//sprintf(img_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
+	sprintf(img_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
 	cv::Mat map = cv::imread(img_file, CV_LOAD_IMAGE_COLOR);
 	cv::resize(map, map, map_d.size());
 

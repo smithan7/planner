@@ -34,7 +34,6 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	ROS_INFO("Dist Planner::Agent::init::World initialized");
 	this->n_tasks =  this->world->get_n_nodes();
 	this->travel_step = this->travel_vel *  this->world->get_dt();
-	this->obs_radius = 20.0;
 
 	// initialize classes
 	this->goal_node = new Goal();
@@ -88,8 +87,8 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 bool Agent::load_agent_params(const int &agent_index){
 	this->index = agent_index;
 	char agent_file[200];
-	//sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
-	sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	//sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
     cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
     if (!f_agent.isOpened()){
         ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
@@ -107,6 +106,7 @@ bool Agent::load_agent_params(const int &agent_index){
 	f_agent["task_selection_method"] >> this->task_selection_method;
 	f_agent["task_claim_method"] >> this->task_claim_method;
 	f_agent["task_claim_time"] >> this->task_claim_time;
+	f_agent["obs_radius"] >> this->obs_radius;
 	
 	f_agent.release();
 	return true;
