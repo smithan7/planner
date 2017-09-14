@@ -67,10 +67,10 @@ public:
 	~Agent();
 
 	// take in other agents' updates and include them
-	ros::Subscriber planner_update_subscriber;
+	ros::Subscriber planner_update_subscriber_1, planner_update_subscriber_2;
 	void planner_update_callback( const custom_messages::Planner_Update_MSG& updates );
 
-	ros::Subscriber planner_status_subscriber;
+	ros::Subscriber planner_status_subscriber_1, planner_status_subscriber_2;
 	void planner_status_callback( const custom_messages::Planner_Status_MSG& msg);
 
 	// proivde the rest of the team with my updates
