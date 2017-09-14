@@ -606,10 +606,10 @@ void World::display_world(Agent* agent) {
 
 	char img_file[200];
 	if(this->jetson == 1){
-		sprintf(img_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
+		sprintf(img_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 5);
 	}
 	else{
-		sprintf(img_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 4);
+		sprintf(img_file, "/home/andy/catkin_ws/src/distributed_planner/params/hardware%i_img.png", 5);
 	}
 	cv::Mat map = cv::imread(img_file, CV_LOAD_IMAGE_COLOR);
 	cv::resize(map, map, map_d.size());
