@@ -149,7 +149,7 @@ public:
 	void set_travel_step( const double &ts ) { this->travel_step = ts; };
 private:
 	// location in lat/lon
-	cv::Point2d loc, goal, published_goal;
+	cv::Point2d loc, goal, published_goal, lonlat;
 	double flight_altitude;
 	std::vector< cv::Point2d > path;
 

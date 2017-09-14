@@ -73,7 +73,7 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	// hear everyone else's plans
 	this->planner_update_subscriber = nHandle.subscribe("/agent_plans", 10, &Agent::planner_update_callback, this);
 	// hear everyone else's status and completed tasks
-	this->planner_status_subscriber = nHandle.subscribe("//dist_planner_status", 10, &Agent::planner_status_callback, this);
+	this->planner_status_subscriber = nHandle.subscribe("/dist_planner_status", 10, &Agent::planner_status_callback, this);
 
 
 	/////////////////////// Publishers //////////////////////////////
@@ -90,8 +90,8 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 bool Agent::load_agent_params(const int &agent_index){
 	this->index = agent_index;
 	char agent_file[200];
-	//sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
-	sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	//sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
     cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
     if (!f_agent.isOpened()){
         ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
@@ -135,8 +135,8 @@ void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	//this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
 	//ROS_WARN("status_in loc: %0.6f, %0.6f", status_in.longitude, status_in.latitude);
-	cv::Point2d g = cv::Point2d(status_in.longitude, status_in.latitude);
-	this->loc = this->world->global_to_local(g);
+	this->lonlat = cv::Point2d(status_in.longitude, status_in.latitude);
+	this->loc = this->world->global_to_local(this->lonlat);
 	this->world->get_prm_location(this->loc, this->edge, this->edge_progress, this->obs_radius, this->visiting_nodes);
 	//ROS_WARN("loc: %.2f, %.2f", this->loc.x, this->loc.y);
 	//ROS_INFO("prm loc: edge: %i, %i", this->edge.x, this->edge.y);
@@ -263,10 +263,11 @@ void Agent::publish_Agent_Status(){
 			msg.completed_tasks.push_back(i);
 		}
 	}
-	msg.longitude = this->loc.x;
-	msg.latitude = this->loc.y;
+	msg.longitude = this->lonlat.x;
+	msg.latitude = this->lonlat.y;
 	msg.goal_longitude = this->goal.x;
 	msg.goal_latitude = this->goal.y;
+	msg.index = this->index;
 
 	msg.travelling = this->travelling;
 	msg.emergency_stopped = this->emergency_stopped;
@@ -276,9 +277,12 @@ void Agent::publish_Agent_Status(){
 }
 
 void Agent::planner_status_callback( const custom_messages::Planner_Status_MSG& msg ){
-	for(int i=0; i<msg.completed_tasks.size(); i++){ // make sure all tasks are deactivated7
-		if(this->world->get_nodes()[msg.completed_tasks[i]]->is_active()){
-			this->world->get_nodes()[msg.completed_tasks[i]]->deactivate();
+	if(msg.index != this->index){
+		for(int i=0; i<msg.completed_tasks.size(); i++){ // make sure all tasks are deactivated7
+			if(this->world->get_nodes()[msg.completed_tasks[i]]->is_active()){
+				this->world->get_nodes()[msg.completed_tasks[i]]->deactivate();
+				ROS_ERROR("Task complete");
+			}
 		}
 	}
 }
