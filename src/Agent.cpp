@@ -83,11 +83,11 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	// tell the Costmap Bridge where I am going
 	this->path_publisher =  nHandle.advertise<custom_messages::Costmap_Bridge_Travel_Path_MSG>("/wp_travel_path", 10);
 	// tell everyone my status
-	this->status_publisher = nHandle.advertise<custom_messages::Planner_Status_MSG>("/dist_planner_status", 10);
+	this->status_publisher = nHandle.advertise<custom_messages::Planner_Status_MSG>("dist_planner_status", 10);
 	// publish plan to everyone
-	this->plan_publisher = nHandle.advertise<custom_messages::Planner_Update_MSG>("/agent_plans", 1);	
+	this->plan_publisher = nHandle.advertise<custom_messages::Planner_Update_MSG>("agent_plans", 1);	
 	// publish marker to RVIZ
-	this->marker_publisher = nHandle.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1);
+	this->marker_publisher = nHandle.advertise<visualization_msgs::MarkerArray>("/visualization_marker", 1);
 }
 
 bool Agent::load_agent_params(const int &agent_index){
