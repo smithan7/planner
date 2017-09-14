@@ -2,7 +2,7 @@
   <depend package="my_custom_msg_package" />
   
 
-  <arg name="test_environment_number" default="4"/>
+  <arg name="test_environment_number" default="5"/>
   <arg name="test_scenario_number" default="0"/>
   <arg name="agent_index" default="2"/>
   <arg name="jetson" default="0"/>
