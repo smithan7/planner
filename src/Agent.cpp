@@ -60,7 +60,7 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	this->status_interval = ros::Duration(1.0);
 	this->act_time = ros::Time::now();
 	this->act_interval = ros::Duration(1.0); // how often should I replan if I don't get an update or request
-	this->plot_time = ros::Time::now() + ros::Duration(5.0); // when did I last display the plot
+	this->plot_time = ros::Time::now() + ros::Duration(1.0); // when did I last display the plot
 	this->plot_interval = ros::Duration(1.0); // plot at 1 Hz
 
 	this->start_time = ros::Time::now();
