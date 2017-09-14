@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# record bags
+source /home/nvidia/catkin_ws/devel/setup.bash
+rosbag record -o auction_flight /dji_sdk/odometry /dji_sdk/global_position
