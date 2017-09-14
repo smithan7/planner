@@ -23,7 +23,8 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	ROS_INFO("     agent_index: %i", agent_index);
 	ROS_INFO("     jetson: %i", jetson);
 
-	this->jetson = jetson;		
+	this->jetson = jetson;
+	this->index = agent_index;
 	// load from param file
 	if(!this->load_agent_params(agent_index)){
 		ROS_ERROR("Dist Planner::Agent::init::could not initialize agent");
@@ -138,6 +139,7 @@ void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& 
 
 
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){
+	
 	this->world->set_c_time(ros::Time::now().toSec());
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	//this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
