@@ -4,6 +4,7 @@
   <arg name="test_environment_number" default="4"/>
   <arg name="test_scenario_number" default="0"/>
   <arg name="agent_index" default="1"/>
+  <arg name="jetson" default="1"/>
   
 
 	<!-- Useful transforms -->  
@@ -22,6 +23,7 @@
     <node pkg="costmap_bridge" name="costmap_bridge" type="costmap_bridge" output="screen"/>
        <param name="test_environment_number" value="$( arg test_environment_number )"/>
     	<param name="agent_index" value="$( arg agent_index )"/>
+      <param name="jetson" value="$( arg jetson )"/>
   </group>
 
   <!-- Launch the high level planner -->
@@ -30,6 +32,8 @@
        <param name="test_environment_number" value="$( arg test_environment_number )"/>
        <param name="test_scenario_number" value="$( arg test_scenario_number )"/>
     	<param name="agent_index" value="$( arg agent_index )"/>
+      <param name="jetson" value="$( arg jetson )"/>
+
   </group>
 
 </launch>

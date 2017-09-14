@@ -63,7 +63,7 @@ class World;
 class Agent{
 public:
 
-	Agent(ros::NodeHandle nh, const int &test_environment_number, const int &test_scenario_number, const int &agent_index);
+	Agent(ros::NodeHandle nh, const int &test_environment_number, const int &test_scenario_number, const int &agent_index, const int &jetson);
 	~Agent();
 
 	// take in other agents' updates and include them
@@ -148,6 +148,8 @@ public:
 	double get_travel_done() { return this->travel_done; };
 	void set_travel_step( const double &ts ) { this->travel_step = ts; };
 private:
+
+	int jetson;
 	// location in lat/lon
 	cv::Point2d loc, goal, published_goal, lonlat;
 	double flight_altitude;

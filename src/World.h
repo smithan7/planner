@@ -22,7 +22,7 @@ class Agent_Coordinator;
 class World{
 public:
 	World();	
-	bool init(const int &test_environment_number, const int &test_scenario_number);
+	bool init(const int &test_environment_number, const int &test_scenario_number, const int &jetson);
 	double get_team_probability_at_time_except(const double & time, const int & task, const int & except_agent);
 	void add_stop_to_agents_path(const int &agent_index, const std::vector<int> &task_index, const std::vector<double> &probability, const std::vector<double> &time);
 	~World();
@@ -73,6 +73,7 @@ private:
 	double c_time, dt, end_time;
 
 	bool show_display;
+	int jetson;
 	double last_plot_time;
 	int n_nodes, n_edges, n_agents, n_human_tasks, n_robot_tasks;
 	int n_agent_types, n_task_types;

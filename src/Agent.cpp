@@ -16,19 +16,21 @@
 using namespace std;
 using namespace cv;
 
-Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const int &test_scenario_number, const int &agent_index){
+Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const int &test_scenario_number, const int &agent_index, const int &jetson){
 	ROS_INFO("Agent::Agent::initializing planner");
 	ROS_INFO("     test_environment_number: %i", test_environment_number);
 	ROS_INFO("     test_scenario_number: %i", test_scenario_number);
 	ROS_INFO("     agent_index: %i", agent_index);
-		
+	ROS_INFO("     jetson: %i", jetson);
+
+	this->jetson = jetson;		
 	// load from param file
 	if(!this->load_agent_params(agent_index)){
 		ROS_ERROR("Dist Planner::Agent::init::could not initialize agent");
 	}
 
 	this->world = new World();
-	if(!this->world->init(test_environment_number, test_scenario_number)){
+	if(!this->world->init(test_environment_number, test_scenario_number, jetson)){
 		ROS_ERROR("Dist Planner::Agent::init::World failed to initialize");		
 	}
 	ROS_INFO("Dist Planner::Agent::init::World initialized");
@@ -89,9 +91,14 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 
 bool Agent::load_agent_params(const int &agent_index){
 	this->index = agent_index;
+
 	char agent_file[200];
-	sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
-	//sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	if(this->jetson == 1){
+		sprintf(agent_file, "/home/nvidia/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	}
+	else{
+		sprintf(agent_file, "/home/andy/catkin_ws/src/distributed_planner/params/agent%i_params.xml", agent_index);
+	}
     cv::FileStorage f_agent(agent_file, cv::FileStorage::READ);
     if (!f_agent.isOpened()){
         ROS_ERROR("Dist planner::Agent::init::Failed to open %s", agent_file);
