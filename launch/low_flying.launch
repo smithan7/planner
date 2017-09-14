@@ -12,6 +12,8 @@
 
 	<node pkg="tf" type="static_transform_publisher" name="gps_2_world_broadcaster" args="0 0 0 0 0 0 1 world gps 100" />
 
+	<!-- launch the dji -->
+	<include file="$(find dji_sdk)/launch/sdk_manifold.launch" />
 
   <!-- Launch the dji bridge -->
    <node name="dji_bridge" pkg="dji_bridge" type="dji_bridge.py" output="screen">
