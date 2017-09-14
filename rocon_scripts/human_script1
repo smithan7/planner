@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# condor flight stuff
+
+# set up advertisers
+rosrun rocon_flip generic_advertiser.py -n /distributed_planner/distributed_planner -t /agent_plans
+rosrun rocon_flip generic_advertiser.py -n /distributed_planner/distributed_planner -t /dist_planner_status
+
+# set up puller
+rosrun rocon_flip generic_puller.py -g condor_gateway -t /agent_plans
+rosrun rocon_flip generic_puller.py -g condor_gateway -t /dist_planner_status
+
+rosrun rocon_flip generic_puller.py -g raven_gateway -t /agent_plans
+rosrun rocon_flip generic_puller.py -g raven_gateway -t /dist_planner_status
+
+
+

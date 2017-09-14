@@ -5,7 +5,7 @@
 	<type>0</type>
 	<travel_vel>3.0</travel_vel>
 	<obs_radius>10.0</obs_radius>
-	<flight_altitude>33.0</flight_altitude>
+	<flight_altitude>50.0</flight_altitude>
 	<pay_obstacle_cost>1</pay_obstacle_cost>
 	<task_selection_method>"value_completion"</task_selection_method>
 	<task_claim_method>"greedy"</task_claim_method>

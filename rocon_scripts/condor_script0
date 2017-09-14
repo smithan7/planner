@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# condor flight stuff, launch gateway
+
+source /home/nvidia/catkin_ws/devel/setup.bash
+roslaunch aadi_networking aadi_gateway.launch gateway_name:=condor_gateway
+
+
+
+
