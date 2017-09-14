@@ -34,10 +34,6 @@
        <param name="test_scenario_number" value="$( arg test_scenario_number )"/>
     	<param name="agent_index" value="$( arg agent_index )"/>
        <param name="jetson" value="$( arg jetson )"/>
-      	<remap from="/distributed_planner/condor/agent_plans" to="/agent_plans"/>
-		<remap from="/distributed_planner/raven/agent_plans" to="/agent_plans"/>
-		<remap from="/distributed_planner/condor/dist_planner_status" to="/dist_planner_status"/>
-		<remap from="/distributed_planner/raven/dist_planner_status" to="/dist_planner_status"/>
   </group>
 
   

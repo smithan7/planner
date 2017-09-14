@@ -73,6 +73,33 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	// costmap_bridge status callback, currently does nothing
 	this->costmap_status_subscriber = nHandle.subscribe("/costmap_bridge_status", 1, &Agent::Costmap_Bridge_status_callback, this);
 
+	if(this->index == 0){ // condor
+		// hear everyone else's plans
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/human/agent_plans", 10, &Agent::planner_update_callback, this);
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/raven/agent_plans", 10, &Agent::planner_update_callback, this);
+		// hear everyone else's status and completed tasks
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/human/dist_planner_status", 10, &Agent::planner_status_callback, this);
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/raven/dist_planner_status", 10, &Agent::planner_status_callback, this);
+	}
+	else if(this->index == 1){ // raven
+	// hear everyone else's plans
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/human/agent_plans", 10, &Agent::planner_update_callback, this);
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/condor/agent_plans", 10, &Agent::planner_update_callback, this);
+		// hear everyone else's status and completed tasks
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/human/dist_planner_status", 10, &Agent::planner_status_callback, this);
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/condor/dist_planner_status", 10, &Agent::planner_status_callback, this);
+	
+	}
+	else if(this->index == 2){ // human
+	// hear everyone else's plans
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/raven/agent_plans", 10, &Agent::planner_update_callback, this);
+		this->planner_update_subscriber = nHandle.subscribe("/distributed_planner/condor/agent_plans", 10, &Agent::planner_update_callback, this);
+		// hear everyone else's status and completed tasks
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/raven/dist_planner_status", 10, &Agent::planner_status_callback, this);
+		this->planner_status_subscriber = nHandle.subscribe("/distributed_planner/condor/dist_planner_status", 10, &Agent::planner_status_callback, this);
+	
+	}
+
 	// hear everyone else's plans
 	this->planner_update_subscriber = nHandle.subscribe("/agent_plans", 10, &Agent::planner_update_callback, this);
 	// hear everyone else's status and completed tasks
