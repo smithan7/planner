@@ -3,8 +3,8 @@
 # condor flight stuff
 
 # set up advertisers
-rosrun rocon_flip generic_advertiser.py -n /distributed_planner/distributed_planner -t /distributed_planner/condor/agent_plans
-rosrun rocon_flip generic_advertiser.py -n /distributed_planner/distributed_planner -t /distributed_planner/condor/dist_planner_status
+rosrun rocon_flip generic_advertiser.py -n /distributed_planner/condor -t /distributed_planner/condor/agent_plans
+rosrun rocon_flip generic_advertiser.py -n /distributed_planner/condor -t /distributed_planner/condor/dist_planner_status
 
 # set up puller
 rosrun rocon_flip generic_puller.py -g human_gateway -t /distributed_planner/human/agent_plans
