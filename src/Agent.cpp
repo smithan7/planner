@@ -60,7 +60,7 @@ Agent::Agent(ros::NodeHandle nHandle, const int &test_environment_number, const 
 	this->status_interval = ros::Duration(1.0);
 	this->act_time = ros::Time::now();
 	this->act_interval = ros::Duration(1.0); // how often should I replan if I don't get an update or request
-	this->plot_time = ros::Time::now(); // when did I last display the plot
+	this->plot_time = ros::Time::now() + ros::Duration(5.0); // when did I last display the plot
 	this->plot_interval = ros::Duration(1.0); // plot at 1 Hz
 
 	this->start_time = ros::Time::now();
@@ -139,7 +139,6 @@ void Agent::planner_update_callback( const custom_messages::Planner_Update_MSG& 
 
 
 void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status_MSG& status_in){
-	
 	this->world->set_c_time(ros::Time::now().toSec());
 	// move these two to DJI_Bridge status callback, find out which node I am on
 	//this->loc = cv::Point2d(status_in.local_x, status_in.local_y);
@@ -151,17 +150,14 @@ void Agent::DJI_Bridge_status_callback( const custom_messages::DJI_Bridge_Status
 	//ROS_INFO("prm loc: edge: %i, %i", this->edge.x, this->edge.y);
 	//ROS_INFO("node loc: %.2f, %.2f", this->world->get_nodes()[this->edge.x]->get_local_loc().x, this->world->get_nodes()[this->edge.x]->get_local_loc().y);
 	locationInitialized = true;
-
 	if(ros::Time::now() - this->plot_time > this->plot_interval){
 		this->plot_time = ros::Time::now();
 		this->world->display_world(this);
 	}
-
 	if(ros::Time::now() - this->status_time > this->status_interval){
 		this->status_time = ros::Time::now();
 		publish_Agent_Status();
 	}
-
 	this->act();
 }
 
